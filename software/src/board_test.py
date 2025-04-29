@@ -1,4 +1,4 @@
-from machine import ADC, Pin, PWM, SPI
+from machine import ADC, Pin, PWM, SPI, I2C
 
 import math
 import time
@@ -285,16 +285,20 @@ def testroundrects():
         color += 100
 
 def test_main():
-    testlines(TFT.YELLOW)
-    time.sleep_ms(500)
-
-    testfastlines(TFT.RED, TFT.BLUE)
-    time.sleep_ms(500)
+    tft.fillrect((0, 0), (130, 165), TFT.WHITE)
+    tft.fillcircle((64, 80), 50, TFT.GREEN)
+    while True: time.sleep(1)
 
     testdrawrects(TFT.GREEN)
     time.sleep_ms(500)
 
     testfillrects(TFT.YELLOW, TFT.PURPLE)
+    time.sleep_ms(500)
+
+    testlines(TFT.YELLOW)
+    time.sleep_ms(500)
+
+    testfastlines(TFT.RED, TFT.BLUE)
     time.sleep_ms(500)
 
     tft.fill(TFT.BLACK)
@@ -308,6 +312,47 @@ def test_main():
     testtriangles()
     time.sleep_ms(500)
 
+
+def test_accelerometer():
+    # connect on I2C SCL pin 21, SDA pin 33
+    i2c = I2C(0, scl=Pin(21), sda=Pin(33), freq=100000)
+    scanned = i2c.scan()
+    addr = 0x0f
+    if addr not in scanned:
+        print("Accelerometer device not found on I2C bus.")
+        return
+
+    # reset by writing 0xb6 to 0x14
+    i2c.writeto_mem(addr, 0x14, b'\xb6')
+
+    # read address 0 (CHIP_ID) to test if the device is connected
+    # chip_id = i2c.readfrom_mem(addr, 0, 1)
+    i2c.writeto(addr, bytes([0]))
+    chip_id = i2c.readfrom(addr, 1)
+    print(f'Chip ID: {chip_id[0]:08b}')
+
+    mode = i2c.readfrom_mem(addr, 0x11, 1)
+    print(f'Mode: {mode[0]:08b}')
+
+    # i2c.writeto(addr, bytes([0]))
+    # data = i2c.readfrom(addr, 10)
+    # print(f'Raw data: {data.hex()}')
+
+    while True:
+
+        x_raw = i2c.readfrom_mem(addr, 0x03, 1)
+        y_raw = i2c.readfrom_mem(addr, 0x05, 1)
+        z_raw = i2c.readfrom_mem(addr, 0x07, 1)
+        print(f'X raw: {x_raw[0]}, Y raw: {y_raw[0]}, Z raw: {z_raw[0]}')
+
+        # i2c.writeto(addr, bytes([3]))
+        # data = i2c.readfrom(addr, 10)
+        # print(f'Raw data: {data.hex()}')
+
+        time.sleep(0.5)
+
+# test_accelerometer()
+Pin(41, Pin.OUT).off()
 test_main()
 
 # Read loop
