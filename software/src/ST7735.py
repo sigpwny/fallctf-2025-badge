@@ -123,7 +123,7 @@ class TFT(object) :
     if variant == 'red':
         self._offset = [0, 0]
     elif variant == 'green':
-        self._offset = [0, 2]
+        self._offset = [1, 2]
     elif variant == 'black':
         self._offset = [2, 3]
 
