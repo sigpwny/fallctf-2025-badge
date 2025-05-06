@@ -104,7 +104,7 @@ class TFT(object) :
     '''Create a 565 rgb TFTColor value'''
     return TFTColor(aR, aG, aB)
 
-  def __init__( self, spi, aDC, aReset, aCS) :
+  def __init__( self, spi, aDC, aReset, aCS, variant='red') :
     """aLoc SPI pin location is either 1 for 'X' or 2 for 'Y'.
        aDC is the DC pin and aReset is the reset pin."""
     self._size = ScreenSize
@@ -120,6 +120,12 @@ class TFT(object) :
     self.spi = spi
     self.colorData = bytearray(2)
     self.windowLocData = bytearray(4)
+    if variant == 'red':
+        self._offset = [0, 0]
+    elif variant == 'green':
+        self._offset = [0, 2]
+    elif variant == 'black':
+        self._offset = [2, 3]
 
   def size( self ) :
     return self._size
