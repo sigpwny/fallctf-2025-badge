@@ -1,5 +1,6 @@
 from menu import menu_controller, Menu, RowMenu
 from dots_menu import DotsMenu
+from accelerometer_menu import AccelerometerMenu
 
 test_menu_0 = Menu()
 test_menu_1 = RowMenu([
@@ -18,10 +19,14 @@ test_menu_1 = RowMenu([
     RowMenu.RowItem("d", lambda: print("d")),
 ])
 test_menu_2 = DotsMenu()
+test_menu_3 = AccelerometerMenu()
+
 test_menu_10 = RowMenu([
     RowMenu.RowItem("blank", lambda: menu_controller.push_menu(test_menu_0)),
     RowMenu.RowItem("letters", lambda: menu_controller.push_menu(test_menu_1)),
     RowMenu.RowItem("dots", lambda: menu_controller.push_menu(test_menu_2)),
+    RowMenu.RowItem("accelerometer",
+                    lambda: menu_controller.push_menu(test_menu_3)),
 ])
 menu_controller.push_menu(test_menu_10)
 
