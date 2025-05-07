@@ -28,8 +28,7 @@ class Display(framebuf.FrameBuffer):
     super().__init__(self.buffer, self.width, self.height, framebuf.RGB565)
 
     # SPI setup
-    self.spi = SPI(spi_id, baudrate=baudrate, polarity=0, phase=0,
-             sck=Pin(sck_pin), mosi=Pin(mosi_pin))
+    self.spi = SPI(spi_id, baudrate=baudrate, polarity=0, phase=0, sck=Pin(sck_pin), mosi=Pin(mosi_pin))
 
     # Init ST7735 driver with correct tab type
     if tab == 'r':
@@ -50,7 +49,7 @@ class Display(framebuf.FrameBuffer):
     # Backlight control
     self.backlight = PWM(Pin(backlight_pin))
     self.backlight.freq(1000)
-    self.set_backlight(1.0)
+    self.set_backlight(1)
 
     self.clear()
     self.show()
@@ -75,10 +74,3 @@ class Display(framebuf.FrameBuffer):
 
   def get_tft(self):
     return self.tft
-
-disp = Display()
-disp.fill(0x0000)
-for i in range(0, 180, 20):
-  for j in range(0, 128, 20):
-    disp.fill_circle(i, j, 10, 0x07E0)
-disp.show()
