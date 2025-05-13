@@ -9,7 +9,7 @@ from ST7735 import TFT
 
 
 class MyTFT:
-    def __init__(self, scl, sda, cs, reset, rs, baudrate=1000000):
+    def __init__(self, scl, sda, cs, reset, rs, baudrate=10000000):
         self.spi = SPI(2, baudrate=baudrate, polarity=0, phase=0, sck=Pin(scl), mosi=Pin(sda))
         self.cs = Pin(cs, Pin.OUT)
         self.reset = Pin(reset, Pin.OUT)
@@ -314,6 +314,8 @@ def test_main():
 
 
 def test_accelerometer():
+    # https://atta.szlcsc.com/upload/public/pdf/source/20210108/C966924_A4D777CCA047E4BCE52C7136D49F7338.pdf
+
     # connect on I2C SCL pin 21, SDA pin 33
     i2c = I2C(0, scl=Pin(21), sda=Pin(33), freq=100000)
     scanned = i2c.scan()
@@ -334,24 +336,47 @@ def test_accelerometer():
     mode = i2c.readfrom_mem(addr, 0x11, 1)
     print(f'Mode: {mode[0]:08b}')
 
-    # i2c.writeto(addr, bytes([0]))
-    # data = i2c.readfrom(addr, 10)
-    # print(f'Raw data: {data.hex()}')
+    # for i in range(0, 0xFF):
+    #     data = i2c.readfrom_mem(addr, i, 1)
+    #     print(f'Address {i:02x}: {data[0]:08b}')
+
+    # rangesel: +-2g
+    i2c.writeto_mem(addr, 0x0f, bytes([0b0011]))
+    # bwsel: 62.5Hz
+    i2c.writeto_mem(addr, 0x10, bytes([0b01011]))
+
+    tft.fillrect((0, 0), (130, 165), TFT.BLACK)
+
+    def u12_to_s12(value):
+        if value & 0x800:
+            return value - 0x1000
+        return value
 
     while True:
 
-        x_raw = i2c.readfrom_mem(addr, 0x03, 1)
-        y_raw = i2c.readfrom_mem(addr, 0x05, 1)
-        z_raw = i2c.readfrom_mem(addr, 0x07, 1)
-        print(f'X raw: {x_raw[0]}, Y raw: {y_raw[0]}, Z raw: {z_raw[0]}')
+        x_raw = i2c.readfrom_mem(addr, 0x02, 1)[0] >> 4 | i2c.readfrom_mem(addr, 0x03, 1)[0] << 4
+        y_raw = i2c.readfrom_mem(addr, 0x04, 1)[0] >> 4 | i2c.readfrom_mem(addr, 0x05, 1)[0] << 4
+        z_raw = i2c.readfrom_mem(addr, 0x06, 1)[0] >> 4 | i2c.readfrom_mem(addr, 0x07, 1)[0] << 4
+        max_val = 0x7FF
+        x, y, z = u12_to_s12(x_raw) / max_val, u12_to_s12(y_raw) / max_val, u12_to_s12(z_raw) / max_val
+        x = (x + 1)/2
+        y = (y + 1)/2
+        z = (z + 1)/2
+        print(f'X: {x:.2f}, Y: {y:.2f}, Z: {z:.2f}')
+        tft.fillrect((0, 0), (10, int(160 * x)), TFT.RED)
+        tft.fillrect((0, int(160 * x)), (10, 160), TFT.BLACK)
+        tft.fillrect((10, 0), (10, int(160 * y)), TFT.GREEN)
+        tft.fillrect((10, int(160 * y)), (10, 160), TFT.BLACK)
+        tft.fillrect((20, 0), (10, int(160 * z)), TFT.BLUE)
+        tft.fillrect((20, int(160 * z)), (10, 160), TFT.BLACK)
 
         # i2c.writeto(addr, bytes([3]))
         # data = i2c.readfrom(addr, 10)
         # print(f'Raw data: {data.hex()}')
 
-        time.sleep(0.5)
+        time.sleep_ms(16)
 
-# test_accelerometer()
+test_accelerometer()
 Pin(41, Pin.OUT).off()
 test_main()
 
