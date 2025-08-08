@@ -1,31 +1,50 @@
 import machine
 import network
-import espmesh
+import espnow
+import time
 
-
-def event_handler(event):
-    print('event:', event)
 
 def main():
-    print('hello')
-    '''
-    import espmesh; e = espmesh.ESPMesh()
-    e.active()
-    '''
-    e = espmesh.ESPMesh()
-    print('INFO: ESPMesh object created')
-    # e.register_event_handler(event_handler)
-    e.config(
-        ssid='Nix Kingdom',
-        password='archpeasants',
-        channel=1,
-        ap_password='e8vrbngAscjv',
-    )
-        
-    e.active(True)
-    print('INFO: ESPMesh active')
+    # A WLAN interface must be active to send()/recv()
+    sta = network.WLAN(network.WLAN.IF_STA)
+    sta.active(True)
+    sta.config(txpower=14.75)
+
+    # print my MAC address
+    print('mac address:', sta.config('mac').hex())
+
+    print('0')
+    esp = espnow.ESPNow()
+    print('1')
+    esp.active(True)
+    print('2')
+
+    peer = bytes.fromhex('ff' * 6)
+    # peer = bytes.fromhex('244cab519ad2')
+    print('3')
+    esp.add_peer(peer)
+    print('4')
+    print(esp.get_peers())
+    print('5')
+
+    try:
+        time.sleep(0.3)
+
+        res1 = esp.send(peer, "hello, world")
+        res2 = esp.recv(0)
+        print('got', res1, res2)
+    except Exception as e:
+        print('Error:', e)
+        machine.reset()
+
+    print('done')
+
+    time.sleep(0.2)
+
+    while True:
+        time.sleep(1)
 
 
 if __name__ == '__main__':
-    # main()
-    pass
+    time.sleep(2)
+    main()

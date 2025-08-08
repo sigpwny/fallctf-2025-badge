@@ -1,11 +1,23 @@
-from machine import ADC, Pin, PWM, SPI, I2C
+import machine
+from machine import ADC, Pin, PWM, SPI, I2C, RTC
+import espnow
+import network
 
 import math
 import time
 from time import sleep_ms
+import gc
 
 
-from ST7735 import TFT
+# initialize this first before we run out of memory
+sta = network.WLAN(network.WLAN.IF_STA)
+sta.active(True)
+print('mac address:', sta.config('mac').hex())
+esp = espnow.ESPNow()
+esp.active(True)
+
+
+from ST7735 import TFT, sysfont
 
 
 class MyTFT:
@@ -163,8 +175,7 @@ class MyTFT:
             self.write_data(color_bytes)
         
 
-
-# Initialize ADC on GPIO 10 (ADC1_CH2 on ESP32-S2)
+# Initialize ADC on GPIO 10
 adc_pin = Pin(10)
 adc = ADC(adc_pin)
 
@@ -186,7 +197,7 @@ button = Pin(13, Pin.IN)
 # LED controlled by MOSFET
 lcd_led = PWM(Pin(41))
 lcd_led.freq(1000)  # 1 kHz
-lcd_led.duty_u16(int(.5 * 65535))
+lcd_led.duty_u16(int(.2 * 65535))
 
 # tft = TFT(15, 16, 17, 18, 7)
 # tft.init()
@@ -194,8 +205,10 @@ lcd_led.duty_u16(int(.5 * 65535))
 
 spi = SPI(2, baudrate=20000000, polarity=0, phase=0, sck=Pin(15), mosi=Pin(16))
 tft = TFT(spi,7,18,17)
+tft.rotation(3)  # Set rotation to 1 (landscape mode)
 tft.initr()
 tft.rgb(True)
+tft.fill(TFT.BLACK)
 
 def testlines(color):
     tft.fill(TFT.BLACK)
@@ -314,6 +327,10 @@ def test_main():
 
 
 def test_accelerometer():
+    # freq = 80000000
+    freq = 80000000
+    if machine.freq() != freq:
+        machine.freq(freq)
     # https://atta.szlcsc.com/upload/public/pdf/source/20210108/C966924_A4D777CCA047E4BCE52C7136D49F7338.pdf
 
     # connect on I2C SCL pin 21, SDA pin 33
@@ -352,7 +369,40 @@ def test_accelerometer():
             return value - 0x1000
         return value
 
+
+    joystick_adc1 = ADC(Pin(4))
+    joystick_adc1.atten(ADC.ATTN_11DB)
+    joystick_adc2 = ADC(Pin(5))
+    joystick_adc2.atten(ADC.ATTN_11DB)
+
+    charge_adc = ADC(Pin(8))
+    charge_adc.atten(ADC.ATTN_11DB)
+
+    rtc = RTC()
+    LOG_INTERVAL = 100
+    log_counter = 0
+
+    # while True:
+    #     host, msg = esp.recv()
+    #     if msg:             # msg == None if timeout in recv()
+    #         print('got message from', host.hex(), 'msg:', msg)
+    #         if msg == b'end':
+    #             break
+
+
+    gc.collect()
+
     while True:
+
+        n = 10
+        total = 0
+        sumofsquares = 0
+        for _ in range(n):
+            raw = adc.read_uv()
+            total += raw
+            sumofsquares += raw * raw
+        voltage = total / n / 1e6
+        current = voltage / ISENSE_RESISTOR / ISENSE_GAIN  # Convert voltage to current
 
         x_raw = i2c.readfrom_mem(addr, 0x02, 1)[0] >> 4 | i2c.readfrom_mem(addr, 0x03, 1)[0] << 4
         y_raw = i2c.readfrom_mem(addr, 0x04, 1)[0] >> 4 | i2c.readfrom_mem(addr, 0x05, 1)[0] << 4
@@ -362,47 +412,48 @@ def test_accelerometer():
         x = (x + 1)/2
         y = (y + 1)/2
         z = (z + 1)/2
-        print(f'X: {x:.2f}, Y: {y:.2f}, Z: {z:.2f}')
-        tft.fillrect((0, 0), (10, int(160 * x)), TFT.RED)
-        tft.fillrect((0, int(160 * x)), (10, 160), TFT.BLACK)
-        tft.fillrect((10, 0), (10, int(160 * y)), TFT.GREEN)
-        tft.fillrect((10, int(160 * y)), (10, 160), TFT.BLACK)
-        tft.fillrect((20, 0), (10, int(160 * z)), TFT.BLUE)
-        tft.fillrect((20, int(160 * z)), (10, 160), TFT.BLACK)
+        # print(f'X: {x:.2f}, Y: {y:.2f}, Z: {z:.2f}')
+        tft.fillrect((0, 0), (4, int(160 * x)), TFT.RED)
+        tft.fillrect((0, int(160 * x)), (4, 160), TFT.BLACK)
+        tft.fillrect((4, 0), (4, int(160 * y)), TFT.GREEN)
+        tft.fillrect((4, int(160 * y)), (4, 160), TFT.BLACK)
+        tft.fillrect((8, 0), (4, int(160 * z)), TFT.BLUE)
+        tft.fillrect((8, int(160 * z)), (4, 160), TFT.BLACK)
 
-        # i2c.writeto(addr, bytes([3]))
-        # data = i2c.readfrom(addr, 10)
-        # print(f'Raw data: {data.hex()}')
+        # write the current as text to the screen
+        tft.text((40, 10), f'I: {current * 1000:5.1f}mA', TFT.WHITE, sysfont) 
 
-        time.sleep_ms(16)
+        joystick1 = joystick_adc1.read_uv() / 1e6
+        joystick2 = joystick_adc2.read_uv() / 1e6
+        tft.text((40, 20), f'Joystick:', TFT.WHITE, sysfont)
+        tft.text((40, 30), f'{joystick1:5.3f}V, {joystick2:5.3f}V', TFT.WHITE, sysfont)
+
+        charge = 2 * charge_adc.read_uv() / 1e6 # multiply by 2 for voltage divider
+        tft.text((40, 40), f'Charge: {charge:-5.3f}V', TFT.WHITE, sysfont)
+
+        year, month, day, weekday, hour, minute, second, subseconds = rtc.datetime()
+
+        tft.text((40, 50), f'Time: {hour:02}:{minute:02}:{second:02}', TFT.WHITE, sysfont)
+
+        tft.text((40, 60), f'MAC: {sta.config("mac").hex()}', TFT.WHITE, sysfont)
+
+        rmac, rmesg = esp.recv(100)
+        if rmac is not None:
+            tft.text((40, 75), f'Recv {rmac.hex()}', TFT.WHITE, sysfont)
+            tft.text((40, 85), f'len={len(rmesg)} t={hour:02}:{minute:02}:{second:02}', TFT.WHITE, sysfont)
+            tft.text((40, 95), f'"{rmesg.decode("ascii")}"'[:19], TFT.WHITE, sysfont)
+
+        if log_counter > LOG_INTERVAL:
+            log_counter = 0
+            now = f'{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}:{second:02}'
+            log_data = f'{now}: current={current * 1000:.1f}mA, battery={charge:.3f}V'
+            print(f'Logging: "{log_data}"')
+
+            with open('log.txt', 'a') as f:
+                f.write(log_data + '\n')
+
+        log_counter += 1
 
 test_accelerometer()
 Pin(41, Pin.OUT).off()
 test_main()
-
-# Read loop
-while True:
-    # toggle buzzer if button on gpio 13 is pressed
-    if button.value() == 0:
-        if buzzer.duty_u16() == 0:
-            buzzer.duty_u16(32768)
-            # tft.reset.off()
-        else:
-            buzzer.duty_u16(0)
-            # tft.reset.on()
-
-    n = 100
-    total = 0
-    sumofsquares = 0
-    for _ in range(n):
-        raw = adc.read()
-        total += raw
-        sumofsquares += raw * raw
-        time.sleep(0.001)
-    raw = total / n  # Average the readings
-    variance = (sumofsquares / n) - (raw * raw)
-    voltage = raw * (ADC_ATTEN_VMAX / 8192)  # Convert raw value to voltage
-    voltage_variance = variance * (2.6 / 8192) ** 2
-    current = voltage / ISENSE_RESISTOR / ISENSE_GAIN  # Convert voltage to current
-    print(f'raw: {raw:.1f}, voltage: {voltage:.2f}V, variance: {voltage_variance:.2f}V^2, current: {current * 1000:.1f}mA')
-    time.sleep(0.5)
