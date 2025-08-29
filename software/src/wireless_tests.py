@@ -8,7 +8,8 @@ def main():
     # A WLAN interface must be active to send()/recv()
     sta = network.WLAN(network.WLAN.IF_STA)
     sta.active(True)
-    sta.config(txpower=14.75)
+    # max power: generally 14.50-14.75 dBm
+    sta.config(txpower=14.50)
 
     # print my MAC address
     print('mac address:', sta.config('mac').hex())
@@ -35,11 +36,12 @@ def main():
         print('got', res1, res2)
     except Exception as e:
         print('Error:', e)
-        machine.reset()
 
     print('done')
 
     time.sleep(0.2)
+
+    esp.active(False)
 
     while True:
         time.sleep(1)
