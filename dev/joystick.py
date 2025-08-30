@@ -21,9 +21,9 @@ class Joystick:
     async def run(self):
         toggle = True
         while True:
-            await asyncio.sleep(1)
             # TODO: Replace with actual joystick reading logic
             log("joystick event y")
             toggle = not toggle
             for callback in self.subscribers['y']:
                 callback('y', 1 if toggle else -1)
+            await asyncio.sleep(1)

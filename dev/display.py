@@ -19,7 +19,6 @@ class ST7735Display(framebuf.FrameBuffer):
             baudrate=20000000,
             rotation=3,
             rgb=True,
-            tab='g',  # 'r' = red, 'b' = blue, 'g' = green
             width=160,
             height=128
     ):
@@ -37,18 +36,8 @@ class ST7735Display(framebuf.FrameBuffer):
         # SPI setup
         self.spi = SPI(spi_id, baudrate=baudrate, polarity=0, phase=0, sck=Pin(sck_pin), mosi=Pin(mosi_pin))
 
-        # Init ST7735 driver with correct tab type
-        if tab == 'r':
-            self.tft = ST7735.TFT(self.spi, aDC=dc_pin, aReset=reset_pin, aCS=cs_pin, variant="red")
-            self.tft.initr()
-        elif tab == 'b':
-            self.tft = ST7735.TFT(self.spi, aDC=dc_pin, aReset=reset_pin, aCS=cs_pin, variant="black")
-            self.tft.initb()
-        elif tab == 'g':
-            self.tft = ST7735.TFT(self.spi, aDC=dc_pin, aReset=reset_pin, aCS=cs_pin, variant="green")
-            self.tft.initg()
-        else:
-            raise ValueError("Invalid tab color. Use 'r', 'b', or 'g'.")
+        self.tft = ST7735.TFT(self.spi, aDC=dc_pin, aReset=reset_pin, aCS=cs_pin, variant="green")
+        self.tft.initg()
 
         self.tft.rgb(rgb)
         self.tft.rotation(rotation)
