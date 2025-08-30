@@ -12,7 +12,7 @@ import gc
 # initialize this first before we run out of memory
 sta = network.WLAN(network.WLAN.IF_STA)
 sta.active(True)
-sta.config(txpower=14.50)
+sta.config(txpower=20)
 print('mac address:', sta.config('mac').hex())
 esp = espnow.ESPNow()
 esp.active(True)

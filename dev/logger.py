@@ -36,7 +36,7 @@ class Logger:
 
     def _write(self, message):
         if self.write_to_stderr:
-            print(message, file=sys.stderr, flush=True)
+            print(message, file=sys.stderr)
         if self.write_to_file:
             self.file.write(message + '\n')
             self.file.flush()
@@ -53,7 +53,11 @@ class Logger:
         """
         msg = ''
         if self.log_timestamp:
-            msg += f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] "
+            if 'strftime' in dir(time):
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                timestamp = f'{time.time_ns()/1e9:.2f}'
+            msg += f"[{timestamp}] "
         msg += f"({self.log_level.upper()}) "
         msg += ' '.join(str(arg) for arg in args)
 

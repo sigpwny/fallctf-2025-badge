@@ -3,10 +3,13 @@ import framebuf
 from sysfont import sysfont
 from machine import Pin, SPI, PWM
 
+import micropython
+
 class Display(framebuf.FrameBuffer):
   def __init__(
     self,
-    spi_id=1,
+    _buffer=None,
+    spi_id=2,
     sck_pin=15,
     mosi_pin=16,
     dc_pin=7,
@@ -22,7 +25,12 @@ class Display(framebuf.FrameBuffer):
   ):
     self.width = width
     self.height = height
-    self.buffer = bytearray(self.width * self.height * 2)  # RGB565 = 2 bytes per pixel
+    # print(micropython.mem_info())
+    if _buffer:
+      assert len(_buffer) == self.width * self.height * 2
+      self.buffer = _buffer
+    else:
+      self.buffer = bytearray(self.width * self.height * 2)  # RGB565 = 2 bytes per pixel
 
     # Initialize FrameBuffer in RGB565 format
     super().__init__(self.buffer, self.width, self.height, framebuf.RGB565)

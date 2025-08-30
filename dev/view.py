@@ -1,42 +1,34 @@
-from enum import Enum
-
 from logger import log
 
 
-class ViewMode(Enum):
-    TEXT = 'text'
-    GRAPHICAL = 'graphical'
-
-
 class View:
-    def __init__(self, mode):
-        assert mode in ViewMode, "Mode must be an instance of ViewMode Enum"
-        self.mode = mode
+    def __init__(self, display):
+        self.display = display
 
     def update(self, data):
-        if self.mode == ViewMode.TEXT:
-            self._update_text(data)
-        elif self.mode == ViewMode.GRAPHICAL:
-            self._update_graphical(data)
-
-    def _update_text(self, data):
-        log(f"Text View Updated with data: {data}")
-        # TODO: Implement text update logic
-
-    def _update_graphical(self, data):
-        raise NotImplementedError("Graphical view is not implemented yet")
+        pass
 
     def render(self):
-        if self.mode == ViewMode.TEXT:
-            self._render_text()
-        elif self.mode == ViewMode.GRAPHICAL:
-            self._render_graphical()
+        pass
 
-    def _render_text(self):
-        log('(NOT IMPLEMENTED) Rendering Text View')
-        # TODO: Implement text rendering logic
-        # think about using C to accelerate rendering
 
-    def _render_graphical(self):
-        raise NotImplementedError("Graphical rendering is not implemented yet")
-    
+class BasicTextView(View):
+    def __init__(self, display=None, num_lines=5):
+        super().__init__(display)
+        self.lines = ['' for _ in range(num_lines)]
+
+    def update(self, index, line):
+        if 0 <= index < len(self.lines):
+            self.lines[index] = line
+        else:
+            raise IndexError("Line index out of range")
+
+    def first_render(self):
+        self.render(refresh_all=True)
+
+    def render(self, refresh_all=False):
+        self.display.clear()
+        for i, line in enumerate(self.lines):
+            self.display.draw_text(0, i * self.display.line_height, line)
+        self.display.show()
+
