@@ -28,6 +28,10 @@ from uctypes import bytearray_at, addressof
 
 __version__ = (0, 5, 2)
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from display import ST7735Display
+
 
 class DisplayState:
     def __init__(self):
@@ -63,6 +67,7 @@ class Writer:
         return s.text_row, s.text_col
 
     def __init__(self, device, font, verbose=True):
+        # type: (ST7735Display, Any, bool) -> None
         self.devid = _get_id(device)
         self.device = device
         if self.devid not in Writer.state:
@@ -256,8 +261,9 @@ class Writer:
 # Writer for colour displays.
 class CWriter(Writer):
     def __init__(self, device, font, fgcolor=None, bgcolor=None, verbose=True):
-        # if not hasattr(device, "palette"):
-        #     raise OSError("Incompatible device driver.")
+        # type: (ST7735Display, Any, int | None, int | None, bool) -> None
+        if not hasattr(device, "palette"):
+            raise OSError("Incompatible device driver.")
 
         super().__init__(device, font, verbose)
         if bgcolor is not None:  # Assume monochrome.
@@ -274,16 +280,9 @@ class CWriter(Writer):
             return  # All done
         buf = bytearray_at(addressof(self.glyph), len(self.glyph))
         fbc = framebuf.FrameBuffer(buf, self.char_width, self.char_height, self.map)
-        # palette = self.device.palette
-        # palette.bg(self.fgcolor if invert else self.bgcolor)
-        # palette.fg(self.bgcolor if invert else self.fgcolor)
-        # TODO fix color showing
-        # color are in RBG 565 format
-        palette = bytearray(4)
-        palette[0] = (self.bgcolor & 0xFF) if not invert else (self.fgcolor & 0xFF)
-        palette[1] = (self.bgcolor >> 8) if not invert else (self.fgcolor >> 8)
-        palette[2] = (self.fgcolor & 0xFF) if not invert else (self.bgcolor & 0xFF)
-        palette[3] = (self.fgcolor >> 8) if not invert else (self.bgcolor >> 8)
+        palette = self.device.palette
+        palette.bg(self.fgcolor if invert else self.bgcolor)
+        palette.fg(self.bgcolor if invert else self.fgcolor)
         self.device.blit(fbc, s.text_col, s.text_row, -1, palette)
         s.text_col += self.char_width
         self.cpos += 1

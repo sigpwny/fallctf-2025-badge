@@ -4,6 +4,7 @@ from logger import log
 import ST7735
 import framebuf
 from machine import Pin, SPI, PWM
+from boolpalette import BoolPalette
 
 class ST7735Display(framebuf.FrameBuffer):
     def __init__(
@@ -32,6 +33,8 @@ class ST7735Display(framebuf.FrameBuffer):
 
         # Initialize FrameBuffer in RGB565 format
         super().__init__(self.buffer, self.width, self.height, framebuf.RGB565)
+
+        self.palette = BoolPalette(framebuf.RGB565)
 
         # SPI setup
         self.spi = SPI(spi_id, baudrate=baudrate, polarity=0, phase=0, sck=Pin(sck_pin), mosi=Pin(mosi_pin))

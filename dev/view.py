@@ -1,9 +1,14 @@
 from logger import log
 from font_writer import CWriter, Writer
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from display import Display
+
 
 class View:
     def __init__(self, display):
+        # type: (Display | None) -> None
         self.display = display
 
     def update(self, data):
@@ -15,6 +20,7 @@ class View:
 
 class BasicTextView(View):
     def __init__(self, display=None, num_lines=5):
+        # type: (Display | None, int) -> None
         super().__init__(display)
         self.lines = ["" for _ in range(num_lines)]
 
@@ -36,6 +42,7 @@ class BasicTextView(View):
 
 class FontTextView(View):
     def __init__(self, display, font_path: str, fgcolor=None, bgcolor=None, inv=False):
+        # type: (Display, str, int | None, int | None, bool) -> None
         super().__init__(display)
         self.writer = CWriter(
             self.display.display,
@@ -48,7 +55,7 @@ class FontTextView(View):
         self.x = 0
         self.y = 0
 
-    def update(self, x, y, data):
+    def update(self, x, y, data: str):
         self.x = x
         self.y = y
         self.data = data
@@ -64,6 +71,3 @@ class FontTextView(View):
         Writer.set_textpos(self.display.display, self.x, self.y)
         self.writer.printstring(self.data, invert=self.inv)
         self.display.show()
-
-    def close(self):
-        del self.writer
