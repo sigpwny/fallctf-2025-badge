@@ -1,8 +1,10 @@
 import asyncio
 
 from logger import Logger, set_logger, log
+from boot_screen import boot_screen
 
 # dynamically import most modules
+
 
 class Environment:
     def __init__(self, mode='dev', boardless_mode=False):
@@ -33,6 +35,8 @@ class Environment:
             if self.early_board_init is None:
                 raise RuntimeError("early_board_init is required for non-boardless mode")
             display = Display(_buffer=self.early_board_init.display_buffer)
+            # boot screen
+            boot_screen(display)
         main_controller = MainController(joystick=joystick, display=display)
 
         await asyncio.gather(
