@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # compile certain python files to mpy
-MPY_CANDIDATES=("ST7735.py" "sysfont.py" "logger.py" "font_writer.py" "monospaceKrypton_font.py")
+MPY_CANDIDATES=("ST7735.py" "sysfont.py" "logger.py")
 
 # check that we have mpremote and mpy-cross installed
 if ! command -v mpremote &> /dev/null; then
@@ -28,6 +28,13 @@ done
 # transfer all python files not in MPY_CANDIDATES
 for f in *.py; do
     if [[ ! " ${MPY_CANDIDATES[*]} " =~ " $f " ]]; then
+        echo "Transferring $f"
+        mpremote cp "$f" :
+    fi
+done
+# font
+for f in *.mfnt; do
+    if [ -f "$f" ]; then
         echo "Transferring $f"
         mpremote cp "$f" :
     fi

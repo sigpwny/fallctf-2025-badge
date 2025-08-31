@@ -1,5 +1,4 @@
 from logger import log
-from font_writer import CWriter, Writer
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -41,33 +40,57 @@ class BasicTextView(View):
 
 
 class FontTextView(View):
-    def __init__(self, display, font_path: str, fgcolor=None, bgcolor=None, inv=False):
-        # type: (Display, str, int | None, int | None, bool) -> None
+    def __init__(
+        self,
+        display,
+        font_path: str,
+        cache_index=False,
+        color=None,
+        x_spacing=1,
+        y_spacing=1,
+        rot=0,
+    ):
+        # type: (Display, str, bool, int|None, int, int, int) -> None
         super().__init__(display)
-        self.writer = CWriter(
-            self.display.display,
-            __import__(font_path),
-            fgcolor=fgcolor,
-            bgcolor=bgcolor,
-        )
-        self.inv = inv
+        self.color = color if color is not None else self.display.display.tft.WHITE
+        from microfont import MicroFont
+
+        self.font = MicroFont(font_path, cache_index=cache_index)
         self.data = ""
         self.x = 0
         self.y = 0
+        self.x_spacing = x_spacing
+        self.y_spacing = y_spacing
+        self.rot = rot
 
     def update(self, x, y, data: str):
         self.x = x
         self.y = y
         self.data = data
 
-    def setColor(self, fgcolor, bgcolor):
-        self.writer.setcolor(fgcolor, bgcolor)
+    def setColor(self, color):
+        self.color = color
 
-    def setInvert(self, invert):
-        self.inv = invert
+    def setRotation(self, rot):
+        self.rot = rot
+
+    def setSpacing(self, x_spacing, y_spacing):
+        self.x_spacing = x_spacing
+        self.y_spacing = y_spacing
 
     def render(self):
         self.display.clear()
-        Writer.set_textpos(self.display.display, self.x, self.y)
-        self.writer.printstring(self.data, invert=self.inv)
+        self.font.write(
+            self.data,
+            self.display.display,
+            1,
+            self.display.display.width,
+            self.display.display.height,
+            self.x,
+            self.y,
+            self.color,
+            y_spacing=self.y_spacing,
+            x_spacing=self.x_spacing,
+            rot=self.rot,
+        )
         self.display.show()

@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Needs freetype-py>=1.0
-
-# from https://github.com/peterhinch/micropython-font-to-py
-
+# https://github.com/antirez/microfont/blob/main/font_to_microfont.py
 # Implements multi-pass solution to setting an exact font height
 
 # Some code adapted from Daniel Bader's work at the following URL
@@ -13,7 +11,8 @@
 
 # The MIT License (MIT)
 #
-# Copyright (c) 2016-2025 Peter Hinch
+# Copyright (c) 2016-2023 Peter Hinch
+# Copyright (c) 2024 Salvatore Sanfilippo <antirez@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +35,7 @@
 import argparse
 import sys
 import os
+import struct
 
 try:
     import freetype
@@ -47,62 +47,6 @@ if freetype.version()[0] < 1:
 
 MINCHAR = 32  # Ordinal values of default printable ASCII set
 MAXCHAR = 126  # 94 chars
-
-# UTILITIES FOR WRITING PYTHON SOURCECODE TO A FILE
-
-# ByteWriter takes as input a variable name and data values and writes
-# Python source to an output stream of the form
-# my_variable = b'\x01\x02\x03\x04\x05\x06\x07\x08'\
-
-# Lines are broken with \ for readability.
-
-
-class ByteWriter:
-    bytes_per_line = 16
-
-    def __init__(self, stream, varname):
-        self.stream = stream
-        self.stream.write("{} =\\\n".format(varname))
-        self.bytecount = 0  # For line breaks
-
-    def _eol(self):
-        self.stream.write("'\\\n")
-
-    def _eot(self):
-        self.stream.write("'\n")
-
-    def _bol(self):
-        self.stream.write("b'")
-
-    # Output a single byte
-    def obyte(self, data):
-        if not self.bytecount:
-            self._bol()
-        self.stream.write("\\x{:02x}".format(data))
-        self.bytecount += 1
-        self.bytecount %= self.bytes_per_line
-        if not self.bytecount:
-            self._eol()
-
-    # Output from a sequence
-    def odata(self, bytelist):
-        for byt in bytelist:
-            self.obyte(byt)
-
-    # ensure a correct final line
-    def eot(self):  # User force EOL if one hasn't occurred
-        if self.bytecount:
-            self._eot()
-        self.stream.write("\n")
-
-
-# Define a global
-def var_write(stream, name, value):
-    stream.write("{} = {}\n".format(name, value))
-
-
-# FONT HANDLING
-
 
 class Bitmap:
     """
@@ -398,7 +342,6 @@ class Font(dict):
 
     def build_arrays(self, hmap, reverse):
         data = bytearray()
-        index = bytearray()
         sparse = bytearray()
 
         def append_data(data, char):
@@ -406,35 +349,20 @@ class Font(dict):
             data += (width).to_bytes(2, byteorder="little")
             data += bytearray(self.stream_char(char, hmap, reverse))
 
-        # self.charset is contiguous with chars having ordinal values in the
-        # inclusive range specified. Where the specified character set has gaps
-        # missing characters are empty strings.
-        # Charset includes default char and both max and min chars, hence +2.
-        if len(self.charset) <= MAXCHAR - MINCHAR + 2:
-            # Build normal index. Efficient for ASCII set and smaller as
-            # entries are 2 bytes (-> data[0] for absent glyph)
-            for char in self.charset:
-                if char == "":
-                    index += bytearray((0, 0))
-                else:
-                    index += (len(data)).to_bytes(2, byteorder="little")  # Start
-                    append_data(data, char)
-            index += (len(data)).to_bytes(2, byteorder="little")  # End
-        else:
-            # Sparse index. Entries are 4 bytes but only populated if the char
-            # has a defined glyph.
-            append_data(data, self.charset[0])  # data[0] is the default char
-            for char in sorted(self.keys()):
-                sparse += ord(char).to_bytes(2, byteorder="little")
-                pad = len(data) % 8
-                if pad:  # Ensure len(data) % 8 == 0
-                    data += bytearray(8 - pad)
-                try:
-                    sparse += (len(data) >> 3).to_bytes(2, byteorder="little")  # Start
-                except OverflowError:
-                    raise ValueError("Total size of font bitmap exceeds 524287 bytes.")
-                append_data(data, char)
-        return data, index, sparse
+        # Sparse index. Entries are 4 bytes but only populated if the char
+        # has a defined glyph.
+        append_data(data, self.charset[0])  # data[0] is the default char
+        for char in sorted(self.keys()):
+            sparse += ord(char).to_bytes(2, byteorder="little")
+            pad = len(data) % 8
+            if pad:  # Ensure len(data) % 8 == 0
+                data += bytearray(8 - pad)
+            try:
+                sparse += (len(data) >> 3).to_bytes(2, byteorder="little")  # Start
+            except OverflowError:
+                raise ValueError("Total size of font bitmap exceeds 524287 bytes.")
+            append_data(data, char)
+        return data, sparse
 
     def build_binary_array(self, hmap, reverse, sig):
         data = bytearray((0x3F + sig, 0xE7, self.max_width, self.height))
@@ -443,79 +371,6 @@ class Font(dict):
             data += bytes((width,))
             data += bytearray(self.stream_char(char, hmap, reverse))
         return data
-
-
-# PYTHON FILE WRITING
-# The index only holds the start of data so can't read next_offset but must
-# calculate it.
-
-STR01 = """# Code generated by font_to_py.py.
-# Font: {}{}
-# Cmd: {}
-version = '0.42'
-
-"""
-
-# Code emitted for charsets spanning a small range of ordinal values
-STR02 = """_mvfont = memoryview(_font)
-_mvi = memoryview(_index)
-ifb = lambda l : l[0] | (l[1] << 8)
-
-def get_ch(ch):
-    oc = ord(ch)
-    ioff = 2 * (oc - {0} + 1) if oc >= {0} and oc <= {1} else 0
-    doff = ifb(_mvi[ioff : ])
-    width = ifb(_mvfont[doff : ])
-"""
-
-# Code emiited for large charsets, assumed by build_arrays() to be sparse.
-# Binary search of sorted sparse index.
-# Offset into data array is saved after dividing by 8
-STRSP = """_mvfont = memoryview(_font)
-_mvsp = memoryview(_sparse)
-ifb = lambda l : l[0] | (l[1] << 8)
-
-def bs(lst, val):
-    while True:
-        m = (len(lst) & ~ 7) >> 1
-        v = ifb(lst[m:])
-        if v == val:
-            return ifb(lst[m + 2:])
-        if not m:
-            return 0
-        lst = lst[m:] if v < val else lst[:m]
-
-def get_ch(ch):
-    doff = bs(_mvsp, ord(ch)) << 3
-    width = ifb(_mvfont[doff : ])
-"""
-
-# Code emitted for horizontally mapped fonts.
-STR02H = """
-    next_offs = doff + 2 + ((width - 1)//8 + 1) * {0}
-    return _mvfont[doff + 2:next_offs], {0}, width
-
-"""
-
-# Code emitted for vertically mapped fonts.
-STR02V = """
-    next_offs = doff + 2 + (({0} - 1)//8 + 1) * width
-    return _mvfont[doff + 2:next_offs], {0}, width
-
-"""
-
-# Extra code emitted where -i is specified.
-STR03 = '''
-def glyphs():
-    for c in """{}""":
-        yield c, get_ch(c)
-
-'''
-
-
-def write_func(stream, name, arg):
-    stream.write("def {}():\n    return {}\n\n".format(name, arg))
-
 
 def write_font(
     op_path,
@@ -537,7 +392,7 @@ def write_font(
         print("Can't open", font_path)
         return False
     try:
-        with open(op_path, "w", encoding="utf-8") as stream:
+        with open(op_path, "wb") as stream:
             write_data(stream, fnt, font_path, hmap, reverse, iterate, charset)
     except OSError:
         print("Can't open", op_path, "for writing")
@@ -550,68 +405,26 @@ def write_data(stream, fnt, font_path, hmap, reverse, iterate, charset):
     minchar = min(fnt.crange)
     maxchar = max(fnt.crange)
     defchar = fnt.defchar
-    st = "" if charset == "" else " Char set: {}".format(charset)
-    cl = " ".join(sys.argv)
-    stream.write(STR01.format(os.path.split(font_path)[1], st, cl))
-    write_func(stream, "height", height)
-    write_func(stream, "baseline", fnt._max_ascent)
-    write_func(stream, "max_width", fnt.max_width)
-    write_func(stream, "hmap", hmap)
-    write_func(stream, "reverse", reverse)
-    write_func(stream, "monospaced", fnt.monospaced)
-    write_func(stream, "min_ch", minchar)
-    write_func(stream, "max_ch", maxchar)
-    if iterate:
-        stream.write(STR03.format("".join(sorted(fnt.keys()))))
-    data, index, sparse = fnt.build_arrays(hmap, reverse)
-    bw_font = ByteWriter(stream, "_font")
-    bw_font.odata(data)
-    bw_font.eot()
-    if sparse:  # build_arrays() has returned a sparse index
-        bw_sparse = ByteWriter(stream, "_sparse")
-        bw_sparse.odata(sparse)
-        bw_sparse.eot()
-        stream.write(STRSP)
-        print("Sparse font file.")
-    else:
-        bw_index = ByteWriter(stream, "_index")
-        bw_index.odata(index)
-        bw_index.eot()
-        stream.write(STR02.format(minchar, maxchar))
-        print("Normal (non-sparse) font file.")
-    if hmap:
-        stream.write(STR02H.format(height))
-    else:
-        stream.write(STR02V.format(height))
 
+    # Build data and index.
+    data, sparse = fnt.build_arrays(hmap, reverse)
 
-# BINARY OUTPUT
-# hmap reverse magic bytes
-# 0    0       0x3f 0xe7
-# 1    0       0x40 0xe7
-# 0    1       0x41 0xe7
-# 1    1       0x42 0xe7
-def write_binary_font(op_path, font_path, height, hmap, reverse):
-    try:
-        fnt = Font(font_path, height, 32, 126, True, None, "", False)  # All chars have same width
-    except freetype.ft_errors.FT_Exception:
-        print("Can't open", font_path)
-        return False
-    sig = 1 if hmap else 0
-    if reverse:
-        sig += 2
-    try:
-        with open(op_path, "wb") as stream:
-            data = fnt.build_binary_array(hmap, reverse, sig)
-            stream.write(data)
-    except OSError:
-        print("Can't open", op_path, "for writing")
-        return False
-    return True
-
+    # Binary header part:
+    # 4 bytes: magic "MFNT" (Micropython FoNT)
+    # 4 bytes: height, baseline, max_width, monospaced, each
+    #          as 8 bit unsigned integer values.
+    # 4 bytes: Length of the sparse index as little endian unsigned 32 bit int.
+    sig = bytes("MFNT","utf-8")
+    stream.write(sig+struct.pack("<BBBBL",
+        height,
+        fnt._max_ascent,
+        fnt.max_width,
+        fnt.monospaced,
+        len(sparse)))
+    stream.write(sparse)
+    stream.write(data)
 
 # PARSE COMMAND LINE ARGUMENTS
-
 
 def quit(msg):
     print(msg)
@@ -624,7 +437,7 @@ Sample usage:
 font_to_py.py FreeSans.ttf 23 freesans.py
 
 This creates a font with nominal height 23 pixels with these defaults:
-Mapping is horizontal, pitch variable, character set 32-126 inclusive.
+Mapping is vertical, pitch variable, character set 32-126 inclusive.
 Illegal characters will be rendered as "?".
 
 To specify monospaced rendering issue:
@@ -636,8 +449,7 @@ character set (from 32 to 126 inclusive). This range cannot be overridden.
 Random access font files don't support an error character.
 """
 
-
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         __file__, description=DESC, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -645,8 +457,6 @@ def main():
     parser.add_argument("height", type=int, help="Font height in pixels")
     parser.add_argument("outfile", type=str, help="Path and name of output file")
 
-    parser.add_argument("-x", "--xmap", action="store_true", help="Horizontal (x) mapping")
-    parser.add_argument("-y", "--ymap", action="store_true", help="Vertical (y) mapping")
     parser.add_argument("-r", "--reverse", action="store_true", help="Bit reversal")
     parser.add_argument("-f", "--fixed", action="store_true", help="Fixed width (monospaced) font")
     parser.add_argument(
@@ -709,11 +519,6 @@ def main():
     if not os.path.splitext(args.infile)[1].upper() in (".TTF", ".OTF", ".BDF", ".PCF"):
         quit("Font file should be a ttf or otf file.")
 
-    if args.xmap and args.ymap:
-        quit("Cannot be both horizontally and vertically mapped.")
-
-    xmap = args.xmap or not args.ymap  # Default is now horizontal
-
     if args.binary:
         if os.path.splitext(args.outfile)[1].upper() == ".PY":
             quit("Binary file must not have a .py extension.")
@@ -722,11 +527,11 @@ def main():
             quit(BINARY)
 
         print("Writing binary font file.")
-        if not write_binary_font(args.outfile, args.infile, args.height, xmap, args.reverse):
+        if not write_binary_font(args.outfile, args.infile, args.height, True, args.reverse):
             sys.exit(1)
     else:
-        if not os.path.splitext(args.outfile)[1].upper() == ".PY":
-            quit("Output filename must have a .py extension.")
+        if not os.path.splitext(args.outfile)[1].upper() == ".MFNT":
+            quit("Output filename must have a .mfnt extension.")
 
         if args.smallest < 0:
             quit("--smallest must be >= 0")
@@ -769,7 +574,7 @@ def main():
             args.infile,
             args.height,
             args.fixed,
-            xmap,
+            True, # Always horizontally mapped.
             args.reverse,
             args.smallest,
             args.largest,
@@ -781,7 +586,3 @@ def main():
             sys.exit(1)
 
     print(args.outfile, "written successfully.")
-
-
-if __name__ == "__main__":
-    main()
