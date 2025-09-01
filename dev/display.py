@@ -17,7 +17,7 @@ class ST7735Display(framebuf.FrameBuffer):
             reset_pin=18,
             cs_pin=17,
             backlight_pin=41,
-            baudrate=20000000,
+            baudrate=40_000_000,
             rotation=3,
             rgb=True,
             width=160,
@@ -58,8 +58,7 @@ class ST7735Display(framebuf.FrameBuffer):
 
     def set_backlight(self, duty):
         """Set backlight brightness: 0 (off) to 1 (max)."""
-        duty = int(1023 * (1 - duty))
-        self.backlight.duty(duty)
+        self.backlight.duty_u16(int(duty * 65535))
 
     def draw_circle(self, x, y, r, color):
         self.ellipse(x, y, r, r, color)

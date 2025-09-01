@@ -1,3 +1,4 @@
+import time
 from logger import log
 
 TYPE_CHECKING = False
@@ -9,18 +10,26 @@ class View:
     def __init__(self, display):
         # type: (Display | None) -> None
         self.display = display
+        self.start = time.time_ns()
+        self._renders_count = 0
+
+    def get_renders_per_second(self):
+        elapsed = time.time_ns() - self.start
+        if elapsed == 0:
+            return 0
+        return self._renders_count / (elapsed / 1e9)
 
     def update(self, data):
         pass
 
     def render(self):
-        pass
+        self._renders_count += 1
 
 
 class BasicTextView(View):
-    def __init__(self, display=None, num_lines=5):
-        # type: (Display | None, int) -> None
+    def __init__(self, display):
         super().__init__(display)
+        num_lines = self.display.height // self.display.line_height
         self.lines = ["" for _ in range(num_lines)]
 
     def update(self, index, line):
@@ -33,6 +42,7 @@ class BasicTextView(View):
         self.render(refresh_all=True)
 
     def render(self, refresh_all=False):
+        super().render()
         self.display.clear()
         for i, line in enumerate(self.lines):
             self.display.draw_text(0, i * self.display.line_height, line)
@@ -79,6 +89,7 @@ class FontTextView(View):
         self.y_spacing = y_spacing
 
     def render(self):
+        super().render()
         self.display.clear()
         self.font.write(
             self.data,
