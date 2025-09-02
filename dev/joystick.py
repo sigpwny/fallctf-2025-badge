@@ -60,15 +60,15 @@ class Joystick:
             if abs(x_val - 0.5) < off_threshold:
                 x_dir_state = 0
             elif x_val > 0.5 + on_threshold:
-                x_dir_state = -1
-            elif x_val < 0.5 - on_threshold:
                 x_dir_state = 1
+            elif x_val < 0.5 - on_threshold:
+                x_dir_state = -1
             if abs(y_val - 0.5) < off_threshold:
                 y_dir_state = 0
             elif y_val > 0.5 + on_threshold:
-                y_dir_state = -1
-            elif y_val < 0.5 - on_threshold:
                 y_dir_state = 1
+            elif y_val < 0.5 - on_threshold:
+                y_dir_state = -1
 
             if x_dir_state != prev_x_dir_state and x_dir_state != 0:
                 for callback in self.subscribers['left-right']:

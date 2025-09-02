@@ -24,9 +24,11 @@ class Environment:
 
     async def _start(self):
         from joystick import Joystick
+        from buttons import Buttons
         from main_controller import MainController
 
         joystick = Joystick()
+        buttons = Buttons()
         if self.boardless_mode:
             from soft_display import SoftDisplay
             display = SoftDisplay()
@@ -37,10 +39,15 @@ class Environment:
             display = Display(_buffer=self.early_board_init.display_buffer)
             # boot screen
             boot_screen(display)
-        main_controller = MainController(joystick=joystick, display=display)
+        main_controller = MainController(
+            joystick=joystick,
+            buttons=buttons,
+            display=display
+        )
 
         await asyncio.gather(
             main_controller.run(),
             display.run(),
-            joystick.run()
+            joystick.run(),
+            buttons.run(),
         )
