@@ -1,5 +1,15 @@
-from factions import Faction
+from factions import Faction, FACTIONS
 from battle import BattleStats, BattleRunner
+
+
+def checksum(data: list[int]) -> int:
+    ret = 0
+    for x in data:
+        ret ^= x
+        ret += 0xFF55AA11
+        ret &= 0xFFFFFFFF
+    return ret
+
 
 class ShipStats:
     def __init__(self, faction: Faction) -> None:
@@ -13,13 +23,46 @@ class ShipStats:
         self.thrusters = 0
         self.sensors = 0
 
+    def load_file(self, filename: str) -> None:
+        data = []
+        with open(filename) as f:
+            for line in f:
+                data.append(int(line))
+
+        data, chk = data[:-1], data[-1]
+        if chk != checksum(data):
+            raise Exception(
+                f'Loading file {filename} checksum failed. Possibly corrupted or modified save file.')
+
+        self.total_stardust, self.stardust, self.resets, faction_idx, self.weapons, self.shields, self.thrusters, self.sensors = data
+        self.faction = FACTIONS[faction_idx]
+
+    def save_file(self, filename: str) -> None:
+        faction_idx = FACTIONS.index(self.faction)
+        data = [self.total_stardust, self.stardust, self.resets, faction_idx,
+                self.weapons, self.shields, self.thrusters, self.sensors]
+
+        chk = checksum(data)
+        with open(filename, 'w') as f:
+            for x in data:
+                f.write(f'{x}\n')
+            f.write(f'{chk}\n')
+
     def load(self) -> None:
-        # TODO load from file
-        pass
+        try:
+            self.load_file('save1.txt')
+            return
+        except Exception as e:
+            print(e)
+        try:
+            self.load_file('save2.txt')
+            return
+        except Exception as e:
+            print(e)
 
     def save(self) -> None:
-        # TODO save to file (maybe include checksum?)
-        pass
+        self.save_file('save1.txt')
+        self.save_file('save2.txt')
 
     def get_battle_stats(self) -> BattleStats:
         return BattleStats(
@@ -55,7 +98,6 @@ class ShipStats:
 
     def check_for_reset(self) -> None:
         if self.get_rank() == 'Black Hole':
-            # TODO give flag
             self.total_stardust = 0
             self.stardust = 0
             self.resets += 1

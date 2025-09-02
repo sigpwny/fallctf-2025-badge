@@ -3,6 +3,9 @@ from logger import log
 import time
 
 from view import BasicTextView
+from ship_stats import ShipStats
+from factions import FACTION_UNDECIDED, FACTION_WEAPONS
+from battle import BattleRunner
 
 
 class MainController:
@@ -15,6 +18,9 @@ class MainController:
         self.joystick.subscribe(self.joystick_event, events=['xy', 'up-down', 'left-right'])
         self.buttons.subscribe(self.button_event, events=['a', 'b'])
         self.view.first_render()
+
+        self.ship_stats = ShipStats(FACTION_WEAPONS)
+        self.ship_stats.load()
 
     def joystick_event(self, event_type, value):
         if event_type == 'xy':
@@ -32,6 +38,13 @@ class MainController:
     def button_event(self, button, pressed):
         self.view.update(4, f'button {button}: {"pressed" if pressed else "released"}')
         self.view.render()
+
+        if button == 'a' and pressed:
+            # test out battle stuff
+            other_ship = ShipStats(FACTION_UNDECIDED)
+            battle = BattleRunner(
+                self.ship_stats.get_battle_stats(), other_ship.get_battle_stats())
+            asyncio.create_task(battle.run(self.view))
 
     async def run(self):
         while True:

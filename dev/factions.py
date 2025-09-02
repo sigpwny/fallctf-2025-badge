@@ -8,9 +8,10 @@ class Faction:
         self.sensors_boost = sensors_boost
 
 
-FACTION_WEAPONS = Faction("weapons faction", weapons_boost=2)
-FACTION_SHIELDS = Faction("shields faction", shields_boost=2)
-FACTION_THRUSTERS = Faction("thrusters faction", thrusters_boost=2)
-FACTION_SENSORS = Faction("sensors faction", sensors_boost=2)
-FACTIONS = [FACTION_WEAPONS, FACTION_SHIELDS,
+FACTION_UNDECIDED = Faction('undecided')
+FACTION_WEAPONS = Faction('weapons faction', weapons_boost=2)
+FACTION_SHIELDS = Faction('shields faction', shields_boost=2)
+FACTION_THRUSTERS = Faction('thrusters faction', thrusters_boost=2)
+FACTION_SENSORS = Faction('sensors faction', sensors_boost=2)
+FACTIONS = [FACTION_UNDECIDED, FACTION_WEAPONS, FACTION_SHIELDS,
             FACTION_THRUSTERS, FACTION_SENSORS]

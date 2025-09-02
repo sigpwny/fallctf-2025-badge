@@ -1,4 +1,7 @@
 import random
+import asyncio
+
+from view import BasicTextView
 
 
 class BattleStats:
@@ -23,13 +26,36 @@ class BattleRunner:
         self.ship1 = ship1
         self.ship2 = ship2
 
-    def run(self) -> None:
+    async def run(self, view: BasicTextView) -> None:
+        view.update(8, f'Running battle...')
+
+        await asyncio.sleep(1)
         self.ship1_chase_2_bonus = run_chase(self.ship1, self.ship2)
+        view.update(8, f'1 chase 2: {self.ship1_chase_2_bonus}...')
+
+        await asyncio.sleep(1)
         self.damage_to_2 = run_attack(
             self.ship1, self.ship2, self.ship1_chase_2_bonus)
+        view.update(8, f'1 attack 2: {self.damage_to_2}...')
+
+        await asyncio.sleep(1)
         self.ship2_chase_1_bonus = run_chase(self.ship2, self.ship1)
+        view.update(8, f'2 chase 1: {self.ship2_chase_1_bonus}...')
+
+        await asyncio.sleep(1)
         self.damage_to_1 = run_attack(
             self.ship2, self.ship1, self.ship2_chase_1_bonus)
+        view.update(8, f'2 attack 1: {self.damage_to_1}...')
+
+        await asyncio.sleep(1)
+        if self.ship1_won():
+            view.update(8, f'result: ship 1 won')
+        if self.ship2_won():
+            view.update(8, f'result: ship 2 won')
+        if self.is_tie():
+            view.update(8, f'result: tie')
+
+        await asyncio.sleep(1)
 
     def ship1_won(self) -> bool:
         return self.damage_to_1 < self.damage_to_2
