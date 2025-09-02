@@ -105,6 +105,7 @@ class MicroFont:
     # the actual drawing of the character to the target framebuffer memory
     # with rotation, oversampling and so forth.
     # don't support by mpy-cross
+    @micropython.viper
     def draw_ch_blit(
         self,
         fb: ptr8,
