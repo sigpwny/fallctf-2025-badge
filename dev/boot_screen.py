@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from display import Display
 
 
-def boot_screen(display, font_path="monospaceKrypton:24.mfnt", sleep=1):
+def boot_screen(display, font_path="monospaceKrypton_24.mfnt", sleep=1):
     # type: (Display, str, int) -> None
     # TODO add logo view
     v = FontTextView(
