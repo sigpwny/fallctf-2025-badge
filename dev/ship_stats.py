@@ -77,6 +77,7 @@ class ShipStats:
         if is_ship1 and battle.ship1_won() or not is_ship1 and battle.ship2_won():
             self.stardust += 50
         self.check_for_reset()
+        self.save()
 
     def cost_to_upgrade(self, level: int) -> int:
         '''Returns the amount of stardust needed to upgrade to the given level'''

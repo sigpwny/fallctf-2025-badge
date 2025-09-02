@@ -23,8 +23,21 @@ def run_attack(attacker: BattleStats, defender: BattleStats, chase_bonus: int) -
 
 class BattleRunner:
     def __init__(self, ship1: BattleStats, ship2: BattleStats) -> None:
+        self.subscribers = {'result': []}
         self.ship1 = ship1
         self.ship2 = ship2
+
+    def subscribe(self, callback, events):
+        """
+        Subscribe to battle events.
+        :param callback: function to call on event
+        :param events: event types to subscribe to ('result',)
+        """
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].append(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
 
     async def run(self, view: BasicTextView) -> None:
         view.update(8, f'Running battle...')
@@ -56,6 +69,8 @@ class BattleRunner:
             view.update(8, f'result: tie')
 
         await asyncio.sleep(1)
+        for callback in self.subscribers['result']:
+            callback('result', self)
 
     def ship1_won(self) -> bool:
         return self.damage_to_1 < self.damage_to_2
