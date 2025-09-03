@@ -72,16 +72,18 @@ class ShipStats:
             sensors=self.sensors + self.faction.sensors_boost,
         )
 
-    def receive_stardust(self, is_ship1: bool, battle: BattleRunner) -> None:
-        self.stardust += 100
+    def receive_stardust(self, is_ship1: bool, battle: BattleRunner) -> int:
+        stardust_received = 100
         if is_ship1 and battle.ship1_won() or not is_ship1 and battle.ship2_won():
-            self.stardust += 50
+            stardust_received += 50
+        self.stardust += stardust_received
         self.check_for_reset()
         self.save()
+        return stardust_received
 
     def cost_to_upgrade(self, level: int) -> int:
-        '''Returns the amount of stardust needed to upgrade to the given level'''
-        return 100 + level * level
+        '''Returns the amount of stardust needed to upgrade from the given level'''
+        return (10 + level) ** 2
 
     def get_rank(self) -> str:
         # TODO rank class which determines how user is drawn

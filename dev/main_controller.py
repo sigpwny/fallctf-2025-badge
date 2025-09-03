@@ -45,11 +45,25 @@ class MainController:
             other_ship = ShipStats(FACTION_UNDECIDED)
             battle = BattleRunner(
                 self.ship_stats.get_battle_stats(), other_ship.get_battle_stats())
-            battle.subscribe(
-                lambda _, battle: self.ship_stats.receive_stardust(True, battle), events=['result'])
-            battle.subscribe(
-                lambda _, battle: other_ship.receive_stardust(False, battle), events=['result'])
+            battle.subscribe(self.battle_event, events=['result'])
             asyncio.create_task(battle.run(self.view))
+        if button == 'b' and pressed:
+            # testing upgrades
+            if self.ship_stats.stardust >= self.ship_stats.cost_to_upgrade(self.ship_stats.weapons):
+                self.ship_stats.stardust -= self.ship_stats.cost_to_upgrade(
+                    self.ship_stats.weapons)
+                self.ship_stats.weapons += 1
+                self.ship_stats.save()
+                self.view.update(
+                    8, f'upgr W to {self.ship_stats.weapons}')
+            else:
+                self.view.update(8, f'not enough SD')
+                self.view.update(
+                    9, f'(have {self.ship_stats.stardust}, need {self.ship_stats.cost_to_upgrade(self.ship_stats.weapons)})')
+
+    def battle_event(self, event, battle):
+        stardust_received = self.ship_stats.receive_stardust(True, battle)
+        self.view.update(9, f'received {stardust_received} stardust')
 
     async def run(self):
         while True:
