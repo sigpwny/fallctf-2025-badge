@@ -1,4 +1,5 @@
-from view import FontTextView
+from view import FontTextView, BitMapView
+from layout import ColumnLayout
 from logger import log
 import time
 
@@ -7,12 +8,28 @@ if TYPE_CHECKING:
     from display import Display
 
 
-def boot_screen(display, font_path="monospaceKrypton_24.mfnt", sleep=1):
+def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt", sleep=1):
     # type: (Display, str, int) -> None
-    # TODO add logo view
-    v = FontTextView(
-        display=display, font_path=font_path, color=display.display.tft.GREEN, rot=45
+    # TODO fix colors
+    # by `magick pwny8.svg -resize 64x64 -strip -monochrome -depth 1 -define bmp:format=bmp3 mono:- > assets/logo.raw`
+    with open("assets/logo.raw", "rb") as f:
+        logo_data = f.read()
+    v = ColumnLayout(
+        display,
+        FontTextView(
+            display=display,
+            font_path=font_path,
+            color=display.display.tft.GREEN,
+            rot=45,
+        ),
+        BitMapView(
+            display,
+            bytearray(logo_data),
+            width=64,
+            height=64,
+            fg_color=display.display.tft.GREEN,
+        ),
     )
-    v.update(20, 20, "SIGPWNY\n  2025  \n  FALLCTF")
+    v[0].update(20, 20, "SIGPWNY\n  2025  \n  FALLCTF")
     v.render()
     time.sleep(sleep)

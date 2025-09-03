@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # compile large python files to mpy
-MPY_CANDIDATES=("ST7735.py" "logger.py")
+MPY_CANDIDATES=("ST7735.py" "logger.py" "view.py" "layout.py")
 
 # check that we have mpremote and mpy-cross installed
 if ! command -v mpremote &> /dev/null; then
@@ -25,6 +25,8 @@ for f in "${MPY_CANDIDATES[@]}"; do
     fi
 done
 
+mpremote mkdir :assets 2>/dev/null || true
+
 # transfer all python files not in MPY_CANDIDATES
 for f in *.py; do
     if [[ ! " ${MPY_CANDIDATES[*]} " =~ " $f " ]]; then
@@ -32,10 +34,10 @@ for f in *.py; do
         mpremote cp "$f" :
     fi
 done
-# font
-for f in *.mfnt; do
+
+for f in assets/*; do
     if [ -f "$f" ]; then
         echo "Transferring $f"
-        mpremote cp "$f" :
+        mpremote cp "$f" :assets/
     fi
 done

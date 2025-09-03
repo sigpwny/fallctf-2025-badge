@@ -3,6 +3,7 @@ from logger import log
 import time
 
 from view import BasicTextView
+from layout import SimpleLayout
 from ship_stats import ShipStats
 from factions import FACTION_UNDECIDED, FACTION_WEAPONS
 from battle import BattleRunner
@@ -13,7 +14,7 @@ class MainController:
         self.joystick = joystick
         self.buttons = buttons
         self.display = display
-        self.view = BasicTextView(display=display)
+        self.view = SimpleLayout(display, BasicTextView(display))
 
         self.joystick.subscribe(self.joystick_event, events=['xy', 'up-down', 'left-right'])
         self.buttons.subscribe(self.button_event, events=['a', 'b'])
