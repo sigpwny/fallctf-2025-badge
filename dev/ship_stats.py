@@ -18,10 +18,7 @@ class ShipStats:
         self.resets = 0
 
         self.faction = faction
-        self.weapons = 0
-        self.shields = 0
-        self.thrusters = 0
-        self.sensors = 0
+        self.stats = {'weapons': 0, 'shields': 0, 'thrusters': 0, 'sensors': 0}
 
     def load_file(self, filename: str) -> None:
         data = []
@@ -34,13 +31,13 @@ class ShipStats:
             raise Exception(
                 f'Loading file {filename} checksum failed. Possibly corrupted or modified save file.')
 
-        self.total_stardust, self.stardust, self.resets, faction_idx, self.weapons, self.shields, self.thrusters, self.sensors = data
+        self.total_stardust, self.stardust, self.resets, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
         self.faction = FACTIONS[faction_idx]
 
     def save_file(self, filename: str) -> None:
         faction_idx = FACTIONS.index(self.faction)
         data = [self.total_stardust, self.stardust, self.resets, faction_idx,
-                self.weapons, self.shields, self.thrusters, self.sensors]
+                self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors']]
 
         chk = checksum(data)
         with open(filename, 'w') as f:
@@ -66,10 +63,10 @@ class ShipStats:
 
     def get_battle_stats(self) -> BattleStats:
         return BattleStats(
-            weapons=self.weapons + self.faction.weapons_boost,
-            shields=self.shields + self.faction.shields_boost,
-            thrusters=self.thrusters + self.faction.thrusters_boost,
-            sensors=self.sensors + self.faction.sensors_boost,
+            weapons=self.stats['weapons'] + self.faction.boosts.get('weapons', 0),
+            shields=self.stats['shields'] + self.faction.boosts.get('shields', 0),
+            thrusters=self.stats['thrusters'] + self.faction.boosts.get('thrusters', 0),
+            sensors=self.stats['sensors'] + self.faction.boosts.get('sensors', 0),
         )
 
     def receive_stardust(self, is_ship1: bool, battle: BattleRunner) -> int:
@@ -81,9 +78,19 @@ class ShipStats:
         self.save()
         return stardust_received
 
-    def cost_to_upgrade(self, level: int) -> int:
+    def upgrade(self, stat) -> bool:
+        if self.stardust >= self.cost_to_upgrade():
+            self.stardust -= self.cost_to_upgrade()
+            self.stats[stat] += 1
+            self.save()
+            return True
+        else:
+            return False
+
+    def cost_to_upgrade(self) -> int:
         '''Returns the amount of stardust needed to upgrade from the given level'''
-        return (10 + level) ** 2
+        levels = sum(self.stats.values())
+        return (10 + levels) ** 2
 
     def get_rank(self) -> str:
         # TODO rank class which determines how user is drawn

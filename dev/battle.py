@@ -1,7 +1,7 @@
 import random
 import asyncio
 
-from view import BasicTextView
+from layout import SimpleLayout
 
 
 class BattleStats:
@@ -39,7 +39,7 @@ class BattleRunner:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
-    async def run(self, view: BasicTextView) -> None:
+    async def run(self, view: SimpleLayout) -> None:
         view.update(8, f'Running battle...')
 
         await asyncio.sleep(1)
