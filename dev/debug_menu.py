@@ -15,15 +15,17 @@ if TYPE_CHECKING:
 
 
 class DebugMenu(Runnable):
-    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', display: 'Display', ship_stats: 'ShipStats'):
+    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', accelerometer: 'Accelerometer', display: 'Display', ship_stats: 'ShipStats'):
         self.joystick = joystick
         self.buttons = buttons
         self.display = display
+        self.accelerometer = accelerometer
         self.view = SimpleLayout(display, BasicTextView(display))
 
         self.joystick.subscribe(self.joystick_event, events=[
                                 'xy', 'up-down', 'left-right'])
         self.buttons.subscribe(self.button_event, events=['a', 'b'])
+        self.accelerometer.subscribe(self.accel_event, events=['xyz'])
         self.view.first_render()
 
         self.ship_stats = ship_stats
@@ -65,6 +67,12 @@ class DebugMenu(Runnable):
                 self.view.update(8, f'not enough SD')
                 self.view.update(
                     9, f'(have {self.ship_stats.stardust}, need {self.ship_stats.cost_to_upgrade()})')
+ 
+    def accel_event(self, event_type, value):
+        if event_type == 'xyz':
+            x, y, z = value['x'], value['y'], value['z']
+            self.view.update(7, f'{x:+.2f} {y:+.2f} {z:+.2f}')
+            self.view.render()
 
     def battle_event(self, event, battle):
         stardust_received = self.ship_stats.receive_stardust(True, battle)

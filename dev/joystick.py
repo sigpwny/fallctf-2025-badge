@@ -8,10 +8,10 @@ class Joystick:
         self.subscribers = {'xy': [], 'up-down': [], 'left-right': []}
         self._x_pin = 5
         self._y_pin = 4
-        self._calibration_x_min = 0.2
-        self._calibration_x_max = 1.3
-        self._calibration_y_min = 0.2
-        self._calibration_y_max = 1.3
+        self._calibration_x_min = 0.19
+        self._calibration_x_max = 1.4
+        self._calibration_y_min = 0.19
+        self._calibration_y_max = 1.42
 
     def subscribe(self, callback, events):
         """
