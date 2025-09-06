@@ -4,12 +4,13 @@ from logger import log
 TYPE_CHECKING = False
 if TYPE_CHECKING:
     from display import Display
+    from soft_display import SoftDisplay
     from view import View
 
 
 class Layout:
     def __init__(self, display):
-        # type: (Display | None) -> None
+        # type: (Display | SoftDisplay | None) -> None
         self.display = display
         self.start = time.time_ns()
         self._renders_count = 0
@@ -26,7 +27,7 @@ class Layout:
 
 class SimpleLayout(Layout):
     def __init__(self, display, view):
-        # type: (Display | None, View) -> None
+        # type: (Display | SoftDisplay | None, View) -> None
         super().__init__(display)
         self.view = view
 
@@ -45,7 +46,7 @@ class SimpleLayout(Layout):
 
 class ColumnLayout(Layout):
     def __init__(self, display, *columns, cols_count=-1, col_width=-1, y=0):
-        # type: (Display | None, *View, int, int, int) -> None
+        # type: (Display | SoftDisplay | None, *View, int, int, int) -> None
         """
         cols_count: number of columns, -1 to auto-detect
         col_width: width of each column, -1 to auto-detect

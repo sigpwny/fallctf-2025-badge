@@ -9,26 +9,19 @@ from ship_stats import ShipStats
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
-    from joystick import Joystick
-    from buttons import Buttons
-    from display import Display
+    from device_io import DeviceIO
 
 
 class DebugMenu(Runnable):
-    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', accelerometer: 'Accelerometer', display: 'Display', ship_stats: 'ShipStats'):
-        self.joystick = joystick
-        self.buttons = buttons
-        self.display = display
-        self.accelerometer = accelerometer
-        self.view = SimpleLayout(display, BasicTextView(display))
+    def __init__(self, device_io: 'DeviceIO'):
+        self.device_io = device_io
+        self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
 
-        self.joystick.subscribe(self.joystick_event, events=[
+        self.device_io.joystick.subscribe(self.joystick_event, events=[
                                 'xy', 'up-down', 'left-right'])
-        self.buttons.subscribe(self.button_event, events=['a', 'b'])
-        self.accelerometer.subscribe(self.accel_event, events=['xyz'])
+        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
+        self.device_io.accelerometer.subscribe(self.accel_event, events=['xyz'])
         self.view.first_render()
-
-        self.ship_stats = ship_stats
 
     def joystick_event(self, event_type, value):
         if event_type == 'xy':
@@ -52,21 +45,21 @@ class DebugMenu(Runnable):
             # test out battle stuff
             other_ship = ShipStats()
             battle = BattleRunner(
-                self.ship_stats.get_battle_stats(), other_ship.get_battle_stats())
+                self.device_io.ship_stats.get_battle_stats(), other_ship.get_battle_stats())
             battle.subscribe(self.battle_event, events=['result'])
             asyncio.create_task(battle.run(self.view))
         if button == 'b' and pressed:
             # testing upgrades
-            cost_to_upgrade = self.ship_stats.cost_to_upgrade()
-            if self.ship_stats.upgrade('weapons'):
+            cost_to_upgrade = self.device_io.ship_stats.cost_to_upgrade()
+            if self.device_io.ship_stats.upgrade('weapons'):
                 self.view.update(
-                    8, f'upgr W to {self.ship_stats.stats['weapons']}')
+                    8, f'upgr W to {self.device_io.ship_stats.stats['weapons']}')
                 self.view.update(
-                    9, f'{self.ship_stats.stardust} (-{cost_to_upgrade}) SD')
+                    9, f'{self.device_io.ship_stats.stardust} (-{cost_to_upgrade}) SD')
             else:
                 self.view.update(8, f'not enough SD')
                 self.view.update(
-                    9, f'(have {self.ship_stats.stardust}, need {self.ship_stats.cost_to_upgrade()})')
+                    9, f'(have {self.device_io.ship_stats.stardust}, need {self.device_io.ship_stats.cost_to_upgrade()})')
  
     def accel_event(self, event_type, value):
         if event_type == 'xyz':
@@ -75,9 +68,9 @@ class DebugMenu(Runnable):
             self.view.render()
 
     def battle_event(self, event, battle):
-        stardust_received = self.ship_stats.receive_stardust(True, battle)
+        stardust_received = self.device_io.ship_stats.receive_stardust(True, battle)
         self.view.update(
-            9, f'{self.ship_stats.stardust} (+{stardust_received}) SD')
+            9, f'{self.device_io.ship_stats.stardust} (+{stardust_received}) SD')
 
     async def run(self):
         while True:

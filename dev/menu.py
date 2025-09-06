@@ -6,10 +6,8 @@ from layout import SimpleLayout
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
-    from joystick import Joystick
-    from buttons import Buttons
-    from display import Display
     from typing import Callable
+    from device_io import DeviceIO
 
 
 class Runnable:
@@ -17,15 +15,13 @@ class Runnable:
         pass
 
 
-class ListMenu:
-    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', display: 'Display', items: 'list[tuple[str, Callable[[], Runnable]]]'):
-        self.joystick = joystick
-        self.buttons = buttons
-        self.display = display
-        self.view = SimpleLayout(display, BasicTextView(display))
+class ListMenu(Runnable):
+    def __init__(self, device_io: 'DeviceIO', items: 'list[tuple[str, Callable[[], Runnable]]]'):
+        self.device_io = device_io
+        self.view = SimpleLayout(device_io. display, BasicTextView(device_io.display))
 
-        self.joystick.subscribe(self.joystick_event, events=['up-down'])
-        self.buttons.subscribe(self.button_event, events=['a', 'b'])
+        self.device_io.joystick.subscribe(self.joystick_event, events=['up-down'])
+        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
         self.view.first_render()
 
         # cannot have 0 items
