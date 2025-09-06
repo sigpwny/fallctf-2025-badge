@@ -2,6 +2,12 @@ import random
 import asyncio
 
 from layout import SimpleLayout
+from view import BasicTextView
+from menu import Runnable
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from device_io import DeviceIO
 
 
 class BattleStats:
@@ -21,11 +27,13 @@ def run_attack(attacker: BattleStats, defender: BattleStats, chase_bonus: int) -
                                                                 10 + max(0, chase_bonus))
 
 
-class BattleRunner:
-    def __init__(self, ship1: BattleStats, ship2: BattleStats) -> None:
+class BattleRunner(Runnable):
+    def __init__(self, device_io: 'DeviceIO', ship1: BattleStats, ship2: BattleStats, view: SimpleLayout | None = None) -> None:
         self.subscribers = {'result': []}
         self.ship1 = ship1
         self.ship2 = ship2
+        self.view = view or SimpleLayout(device_io.display, BasicTextView(device_io.display))
+
 
     def subscribe(self, callback, events):
         """
@@ -39,34 +47,42 @@ class BattleRunner:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
-    async def run(self, view: SimpleLayout) -> None:
-        view.update(8, f'Running battle...')
+    async def run(self) -> None:
+        self.view.update(8, f'Running battle...')
+        self.view.render()
 
         await asyncio.sleep(1)
         self.ship1_chase_2_bonus = run_chase(self.ship1, self.ship2)
-        view.update(8, f'1 chase 2: {self.ship1_chase_2_bonus}...')
+        self.view.update(8, f'1 chase 2: {self.ship1_chase_2_bonus}...')
+        self.view.render()
 
         await asyncio.sleep(1)
         self.damage_to_2 = run_attack(
             self.ship1, self.ship2, self.ship1_chase_2_bonus)
-        view.update(8, f'1 attack 2: {self.damage_to_2}...')
+        self.view.update(8, f'1 attack 2: {self.damage_to_2}...')
+        self.view.render()
 
         await asyncio.sleep(1)
         self.ship2_chase_1_bonus = run_chase(self.ship2, self.ship1)
-        view.update(8, f'2 chase 1: {self.ship2_chase_1_bonus}...')
+        self.view.update(8, f'2 chase 1: {self.ship2_chase_1_bonus}...')
+        self.view.render()
 
         await asyncio.sleep(1)
         self.damage_to_1 = run_attack(
             self.ship2, self.ship1, self.ship2_chase_1_bonus)
-        view.update(8, f'2 attack 1: {self.damage_to_1}...')
+        self.view.update(8, f'2 attack 1: {self.damage_to_1}...')
+        self.view.render()
 
         await asyncio.sleep(1)
         if self.ship1_won():
-            view.update(8, f'result: ship 1 won')
+            self.view.update(8, f'result: ship 1 won')
+            self.view.render()
         if self.ship2_won():
-            view.update(8, f'result: ship 2 won')
+            self.view.update(8, f'result: ship 2 won')
+            self.view.render()
         if self.is_tie():
-            view.update(8, f'result: tie')
+            self.view.update(8, f'result: tie')
+            self.view.render()
 
         await asyncio.sleep(1)
         for callback in self.subscribers['result']:

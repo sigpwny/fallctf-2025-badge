@@ -44,10 +44,9 @@ class DebugMenu(Runnable):
         if button == 'a' and pressed:
             # test out battle stuff
             other_ship = ShipStats()
-            battle = BattleRunner(
-                self.device_io.ship_stats.get_battle_stats(), other_ship.get_battle_stats())
+            battle = BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), other_ship.get_battle_stats(), self.view)
             battle.subscribe(self.battle_event, events=['result'])
-            asyncio.create_task(battle.run(self.view))
+            asyncio.create_task(battle.run())
         if button == 'b' and pressed:
             # testing upgrades
             cost_to_upgrade = self.device_io.ship_stats.cost_to_upgrade()
