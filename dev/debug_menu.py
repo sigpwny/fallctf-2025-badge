@@ -77,5 +77,6 @@ class DebugMenu(Runnable):
             self.view.update(5, f'Time: {time.time_ns()/1e9:.2f} s')
             self.view.update(
                 6, f'Updates: {self.view.get_renders_per_second():.2f} r/s')
+            self.view.update(10, f'Power: {int(self.device_io.power.get_power_draw()):3} mW, {self.device_io.power.get_battery_percentage()}%')
             self.view.render()
-            await asyncio.sleep(0.1)
+            await asyncio.sleep_ms(200)

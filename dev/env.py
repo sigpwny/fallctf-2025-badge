@@ -35,6 +35,7 @@ class Environment:
         from joystick import Joystick
         from buttons import Buttons
         from accelerometer import Accelerometer
+        from power import PowerMonitor
         from main_controller import MainController
         from device_io import DeviceIO
         from ship_stats import ShipStats
@@ -42,9 +43,10 @@ class Environment:
         joystick = Joystick()
         buttons = Buttons()
         accelerometer = Accelerometer()
+        power = PowerMonitor()
         ship_stats = ShipStats()
         ship_stats.load()
-        device_io = DeviceIO(joystick, buttons, accelerometer, display, ship_stats)
+        device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats)
         main_controller = MainController(device_io)
 
         await asyncio.gather(
@@ -53,4 +55,5 @@ class Environment:
             joystick.run(),
             buttons.run(),
             accelerometer.run(),
+            power.run(),
         )
