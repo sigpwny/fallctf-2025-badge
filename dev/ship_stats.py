@@ -1,4 +1,4 @@
-from factions import Faction, FACTIONS
+from factions import FACTIONS, FACTION_UNDECIDED
 from battle import BattleStats, BattleRunner
 
 
@@ -12,12 +12,12 @@ def checksum(data: list[int]) -> int:
 
 
 class ShipStats:
-    def __init__(self, faction: Faction) -> None:
+    def __init__(self) -> None:
         self.total_stardust = 0
         self.stardust = 0
         self.resets = 0
 
-        self.faction = faction
+        self.faction = FACTION_UNDECIDED
         self.stats = {'weapons': 0, 'shields': 0, 'thrusters': 0, 'sensors': 0}
 
     def load_file(self, filename: str) -> None:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from env import Environment
+import sys
 
 try:
     import os
@@ -17,7 +18,8 @@ def main():
 
     try:
         env.run()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
+        sys.print_exception(e)
         print("Exiting...")
 
 
