@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # compile large python files to mpy
-MPY_CANDIDATES=("ST7735.py" "logger.py" "view.py" "layout.py" "debug_menu.py")
+MPY_CANDIDATES=("ST7735.py" "logger.py" "microfont.py")
 
 # check that we have mpremote and mpy-cross installed
 if ! command -v mpremote &> /dev/null; then

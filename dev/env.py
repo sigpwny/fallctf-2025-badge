@@ -1,9 +1,6 @@
 import asyncio
-
 from logger import Logger, set_logger, log
-from boot_screen import boot_screen
-
-# dynamically import most modules
+# NOTE: Do NOT add any more local imports! Dynamically import most modules in _start()
 
 
 class Environment:
@@ -31,6 +28,7 @@ class Environment:
             if self.early_board_init is None:
                 raise RuntimeError("early_board_init is required for non-boardless mode")
             display = Display(_buffer=self.early_board_init.display_buffer)
+            from boot_screen import boot_screen
             # boot screen
             boot_screen(display)
 

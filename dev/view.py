@@ -101,7 +101,7 @@ class FontTextView(View):
         super().render()
         self.font.write(
             self.data,
-            self.display.display,
+            self.display.display.buffer,
             1,
             self.display.display.width,
             self.display.display.height,

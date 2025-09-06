@@ -105,7 +105,6 @@ class MicroFont:
     # the actual drawing of the character to the target framebuffer memory
     # with rotation, oversampling and so forth.
     # don't support by mpy-cross
-    @micropython.viper
     def draw_ch_blit(
         self,
         fb: ptr8,
@@ -173,8 +172,9 @@ class MicroFont:
                             or dx < 0
                         ):
                             continue
-                        fb16 = ptr16(fb)
-                        fb16[fb_word] = color
+                        fb16 = fb
+                        fb16[fb_word * 2] = color & 0xFF
+                        fb16[fb_word * 2 + 1] = (color >> 8) & 0xFF
 
     # Write a character in the destination MicroPython framebuffer 'fb'
     # setting all the pixels that are set on the font to 'color'.
