@@ -73,10 +73,10 @@ class Joystick:
             if x_dir_state != prev_x_dir_state and x_dir_state != 0:
                 for callback in self.subscribers['left-right']:
                     callback('left-right', x_dir_state == -1)
-                prev_x_dir_state = x_dir_state
+            prev_x_dir_state = x_dir_state
             if y_dir_state != prev_y_dir_state and y_dir_state != 0:
                 for callback in self.subscribers['up-down']:
                     callback('up-down', y_dir_state == -1)
-                prev_y_dir_state = y_dir_state
+            prev_y_dir_state = y_dir_state
 
             await asyncio.sleep_ms(1)
