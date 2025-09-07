@@ -20,31 +20,19 @@ def pairing_test():
     try:
         e.add_peer(BROADCAST_PEER)      # Must add_peer() before send()
     except OSError as err:
-        if err.args[0] == espnow.ESP_ERR_ESPNOW_EXIST:
+        if err.args[1] == 'ESP_ERR_ESPNOW_EXIST':
             pass
 
-    devices = {}
-    cycles = 0
-
     while True:
-        cycles += 1
         e.send(BROADCAST_PEER, "Pairing request")
         #print('sent pairing request')
-        resps = e.recv(timeout_ms = random.randint(400, 600))
+        e.recv(timeout_ms = random.randint(400, 600))
 
-        if resps == (None, None):
-            continue
+        output_dict = [(x[0].hex(), x[1][0]) for x in e.peers_table.items() if time.ticks_diff(time.ticks_ms(), x[1][1]) < 20_000]
+        print(e.peers_table)
+        print(time.ticks_ms(), sorted(output_dict, key=lambda x: x[1]))
 
-        devices[resps[0]] = cycles
-
-        print('devices:')
-        for addr, count in devices.items():
-            if count + 5 < cycles:
-                del devices[addr]
-            print(f'  {addr.hex()}: {count}')
-
-        
-        time.sleep(2)
+        time.sleep(0.5)
 
 def board1_main():
     print('hello, board1!')
