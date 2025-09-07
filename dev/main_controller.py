@@ -9,19 +9,24 @@ if TYPE_CHECKING:
     from device_io import DeviceIO
 
 
-
 class MainController:
-    def __init__(self, device_io: 'DeviceIO'):
+    def __init__(self, device_io: "DeviceIO"):
         self.device_io = device_io
         self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
 
-
     async def run(self):
         while True:
-            await ListMenu(self.device_io, [
-                ('debug', lambda: DebugMenu(self.device_io)),
-                ('battle', lambda: ListMenu(self.device_io, [
-                    ('host', lambda: HostBattleMenu(self.device_io)),
-                    ('join', lambda: JoinBattleMenu(self.device_io)),
-                ])),
-            ]).run()
+            await ListMenu(
+                self.device_io,
+                [
+                    ("debug", None, lambda: DebugMenu(self.device_io)),
+                    (
+                        "battle",
+                        [
+                            ("host", None, lambda: HostBattleMenu(self.device_io)),
+                            ("join", None, lambda: JoinBattleMenu(self.device_io)),
+                        ],
+                        None,
+                    ),
+                ],
+            ).run()
