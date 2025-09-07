@@ -1,8 +1,10 @@
 from view import BasicTextView
 from layout import SimpleLayout
-from menu import ListMenu, Runnable
+from menu import ListMenu
 from debug_menu import DebugMenu
 from battle_menu import HostBattleMenu, JoinBattleMenu
+from circling_ship import CirclingShip
+from layout import Style
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -28,5 +30,12 @@ class MainController:
                         ],
                         None,
                     ),
+                ],
+                additional_views=[
+                    (
+                        CirclingShip(self.device_io.display, height=50),
+                        # cannot use relative positioning here due to if menu unfolds
+                        Style(posType=0b00, x=0, y=70),
+                    )
                 ],
             ).run()

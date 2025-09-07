@@ -27,6 +27,9 @@ class View:
     def get_width_height(self):
         pass
 
+    def first_render(self):
+        self.render()
+
 
 class BasicTextView(View):
     def __init__(self, display):
