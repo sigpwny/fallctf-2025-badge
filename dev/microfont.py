@@ -45,14 +45,14 @@ class MicroFont:
         self.cache = {}
         self.stream = stream  # We keep the file open for lower latecy.
 
-    def height(self):
-        return self.height
+    # def height(self):
+    #     return self.height
 
     def baseline(self):
         return self.baseline
 
-    def max_width(self):
-        return self.max_width
+    # def max_width(self):
+    #     return self.max_width
 
     def monospaced(self):
         return self.monospaced

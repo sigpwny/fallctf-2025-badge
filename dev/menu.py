@@ -18,7 +18,7 @@ class Runnable:
 class ListMenu(Runnable):
     def __init__(self, device_io: 'DeviceIO', items: 'list[tuple[str, Callable[[], Runnable]]]'):
         self.device_io = device_io
-        self.view = SimpleLayout(device_io. display, BasicTextView(device_io.display))
+        self.view = SimpleLayout(device_io. display, BasicTextView(device_io.display), draw_outline=True)
 
         self.device_io.joystick.subscribe(self.joystick_event, events=['up-down'])
         self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
