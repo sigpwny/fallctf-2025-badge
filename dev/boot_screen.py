@@ -20,7 +20,7 @@ def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt", sleep=1):
             display=display,
             font_path=font_path,
             color=display.display.tft.GREEN,
-            rot=45,
+            # rot=45,
         ),
         BitMapView(
             display,
@@ -29,7 +29,9 @@ def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt", sleep=1):
             height=64,
             fg_color=display.display.tft.GREEN,
         ),
+        col_width=90,
+        # draw_outline=True,
     )
-    v[0].update(20, 20, "SIGPWNY\n  2025  \n  FALLCTF")
+    v[0].update(5, 40, "2025\nSIGPWNY\nFALLCTF")
     v.render()
     time.sleep(sleep)

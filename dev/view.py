@@ -21,18 +21,23 @@ class View:
     def render(self):
         pass
 
-    def render_x_y(self):
+    def render_x_y(self, x, y):
+        pass
+
+    def get_width_height(self):
         pass
 
 
 class BasicTextView(View):
     def __init__(self, display):
         super().__init__(display)
-        num_lines = self.display.height // self.display.line_height
-        self.lines = ["" for _ in range(num_lines)]
+        self.max_line = self.display.height // self.display.line_height
+        self.lines = []
 
     def update(self, index, line):
-        if 0 <= index < len(self.lines):
+        if 0 <= index < self.max_line:
+            if index >= len(self.lines):
+                self.lines.extend([""] * (index + 1 - len(self.lines)))
             self.lines[index] = line
         else:
             raise IndexError("Line index out of range")
@@ -49,6 +54,12 @@ class BasicTextView(View):
         super().render()
         for i, line in enumerate(self.lines):
             self.display.draw_text(x, y + i * self.display.line_height, line)
+
+    def get_width_height(self):
+        return (
+            max(len(line) for line in self.lines) * self.display.char_width,
+            len(self.lines) * self.display.line_height,
+        )
 
 
 class FontTextView(View):
@@ -113,6 +124,17 @@ class FontTextView(View):
             rot=self.rot,
         )
 
+    def get_width_height(self):
+        lines = self.data.split("\n")
+        return (
+            self.x_pad
+            + max(len(line) for line in lines) * (self.font.max_width + self.x_spacing)
+            - self.x_spacing,
+            self.y_pad
+            + len(lines) * (self.font.height + self.y_spacing)
+            - self.y_spacing,
+        )
+
 
 class BitMapView(View):
     def __init__(
@@ -133,6 +155,8 @@ class BitMapView(View):
         self.x = x
         self.y = y
         self.palette = BoolPalette(RGB565)
+        self.width = width
+        self.height = height
         if fg_color is not None:
             self.palette.fg(fg_color)
         else:
@@ -153,6 +177,8 @@ class BitMapView(View):
             height,
             format if format is not None else self.format,
         )
+        self.width = width
+        self.height = height
         if x is not None:
             self.x = x
         if y is not None:
@@ -166,3 +192,6 @@ class BitMapView(View):
     def render(self):
         super().render()
         self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
+
+    def get_width_height(self):
+        return self.width, self.height
