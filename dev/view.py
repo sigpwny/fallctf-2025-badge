@@ -69,14 +69,15 @@ class FontTextView(View):
     def __init__(
         self,
         display,
-        font_path: str,
+        font_path,
+        data: str = "",
         cache_index=False,
         color=None,
         x_spacing=1,
         y_spacing=1,
         rot=0,
     ):
-        # type: (Display, str, bool, int|None, int, int, int) -> None
+        # type: (Display, str, str, bool, int|None, int, int, int) -> None
         super().__init__(display)
         self.color = color if color is not None else self.display.display.tft.WHITE
         from microfont import MicroFont
@@ -90,6 +91,7 @@ class FontTextView(View):
         self.x_spacing = x_spacing
         self.y_spacing = y_spacing
         self.rot = rot
+        self.data = data
 
     def update(self, x, y, data: str):
         self.x_pad = x

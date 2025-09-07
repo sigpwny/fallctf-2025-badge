@@ -52,77 +52,6 @@ class SimpleLayout(Layout):
             )
         self.display.show()
 
-
-class ColumnLayout(Layout):
-    def __init__(
-        self,
-        display,
-        *columns,
-        cols_count=-1,
-        col_width=-1,
-        y=0,
-        fixed_width=-1,
-        draw_outline=False,
-        outline_color=None
-    ):
-        # type: (Display | SoftDisplay | None, *View, int, int, int, int, bool, int) -> None
-        """
-        cols_count: number of columns, -1 to auto-detect
-        col_width: width of each column, -1 to auto-detect
-        y: y position of the columns
-        """
-        super().__init__(display)
-        self.columns: list[View | None] = list(columns)
-        self.cols_count = len(columns) if cols_count == -1 else cols_count
-        w = fixed_width if fixed_width != -1 else display.width
-        self.col_width = w // self.cols_count if col_width == -1 else col_width
-        if len(columns) > self.cols_count:
-            self.columns = columns[: self.cols_count]
-        elif len(columns) < self.cols_count:
-            self.columns.extend([None] * (self.cols_count - len(columns)))
-        self.y = y
-        self.draw_outline = draw_outline
-        self.outline_color = outline_color or self.display.display.tft.GREEN
-
-    def first_render(self, *args, **kwargs):
-        for v in self.columns:
-            if v is not None:
-                v.first_render(*args, **kwargs)
-
-    def __setitem__(self, index: int, view):
-        # type: (int, View) -> None
-        self.columns[index] = view
-
-    def __getitem__(self, index: int):
-        # type: (int) -> View | None
-        return self.columns[index]
-
-    def render(self):
-        super().render()
-        self.display.clear()
-        for i, v in enumerate(self.columns):
-            if v is not None:
-                v.render_x_y(i * self.col_width, self.y)
-        if self.draw_outline:
-            width = 0
-            max_h = 0
-            for v in self.columns:
-                if v is not None:
-                    w, h = v.get_width_height()
-                    width = w
-                    max_h = max(max_h, h)
-            self.display.display.rect(
-                0,
-                self.y,
-                self.col_width * (len(self.columns) - 1) + width,
-                max_h,
-                self.outline_color,
-                False,
-            )
-
-        self.display.show()
-
-
 # no dataclass in micropython
 # @dataclass
 class Style:
@@ -160,7 +89,7 @@ class ComplexLayout(Layout):
         self.views: list[tuple[View, Style]] = list(views)
         self.x = x
         self.y = y
-    
+
     def __len__(self):
         return len(self.views)
 
