@@ -46,12 +46,13 @@ class HostBattleMenu(Runnable):
 
 class JoinBattleMenu(ListMenu):
     def __init__(self, device_io: 'DeviceIO'):
-        super().__init__(device_io, [])
-
+        super().__init__(device_io,
         # simulate a couple connections
-        self.items.append(('id1', lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())))
-        self.items.append(('id2', lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())))
-        self.items.append(('id3', lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())))
+                         [
+                             ('id1', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                             ('id2', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                             ('id3', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                         ])
 
         # self.device_io.wifi.subscribe(self.wifi_event, events=['host_broadcast'])
 
