@@ -10,12 +10,12 @@ if TYPE_CHECKING:
 
 class View:
     def __init__(self, display):
-        # type: (Display | None) -> None
+        # type: (Display) -> None
         self.display = display
         self.start = time.time_ns()
         self._renders_count = 0
 
-    def update(self, data):
+    def update(self, *data):
         pass
 
     def render(self):
@@ -24,8 +24,8 @@ class View:
     def render_x_y(self, x, y):
         pass
 
-    def get_width_height(self):
-        pass
+    def get_width_height(self) -> tuple[int, int]:
+        return 0, 0
 
     def first_render(self):
         self.render()
@@ -146,15 +146,15 @@ class BitMapView(View):
         self,
         display,
         bitmap,
+        width,
+        height,
         x=0,
         y=0,
-        width=None,
-        height=None,
         format=MONO_HMSB,
         fg_color=None,
         bg_color=None,
     ):
-        # type: (Display, bytearray, int, int, int|None, int|None, int, int|None, int|None) -> None
+        # type: (Display, bytearray, int, int, int, int, int, int|None, int|None) -> None
         super().__init__(display)
         self.bitmap = FrameBuffer(bitmap, width, height, format)
         self.x = x
@@ -170,6 +170,7 @@ class BitMapView(View):
             self.palette.bg(bg_color)
         else:
             self.palette.bg(self.display.display.tft.BLACK)
+        self.format = format
 
     def set_colors(self, fg_color, bg_color):
         self.palette.fg(fg_color)

@@ -8,6 +8,7 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     from typing import Callable
     from device_io import DeviceIO
+    MenuItem = tuple[str, list['MenuItem'] | None, Callable[[], 'Runnable'] | None]
 
 
 class Runnable:
@@ -19,15 +20,15 @@ class ListMenu(Runnable):
     def __init__(
         self,
         device_io: "DeviceIO",
-        items: "list[tuple[str, list|None, Callable[[], Runnable]]|None]",
+        items: list['MenuItem'],
         *,
         additional_views=None,
     ):
         self.device_io = device_io
         self.sub_idx_ranges = []
         # cannot have 0 items
-        items = items or [("no items", lambda: Runnable())]
-        self.actions: list[Callable[[], Runnable]] = []
+        items = items or [("no items", None, None)]
+        self.actions: list[Callable[[], Runnable] | None] = []
         self.view = ComplexLayout(device_io.display)
         for name, sub, action in items:
             self.view.append(
