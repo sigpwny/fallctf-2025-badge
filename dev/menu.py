@@ -65,8 +65,7 @@ class ListMenu(Runnable):
         self.view.first_render()
 
         self.keep_running = True
-        self.a_pressed = False
-        self.b_pressed = False
+        self.item_selected = False
         self.last_select = 0
         self.select_idx = 0
 
@@ -78,8 +77,34 @@ class ListMenu(Runnable):
                 self.select_idx = (self.select_idx + 1) % self.menu_end
 
     def button_event(self, button, pressed):
-        self.a_pressed = button == "a" and pressed
-        self.b_pressed = button == "b" and pressed
+        if not pressed:
+            return
+        if button == 'a':
+            if self.actions[self.select_idx] is not None:
+                self.keep_running = False
+                self.item_selected = True
+                return
+            for st, end in self.sub_idx_ranges:
+                if st == self.select_idx + 1:
+                    # in a submenu
+                    # toggle visibility of submenu
+                    for i in range(st, end):
+                        self.view[i][1].hidden = not self.view[i][1].hidden
+                    self.view[self.select_idx][0].update(
+                        0,
+                        (">" if self.view[st][1].hidden else "V")
+                        + self.view[self.select_idx][0].lines[0][1:],
+                    )
+        elif button == 'b':
+            for st, end in self.sub_idx_ranges:
+                if st <= self.select_idx < end:
+                    # in a submenu
+                    # toggle visibility of submenu
+                    for i in range(st, end):
+                        self.view[i][1].hidden = True
+                    self.select_idx = st - 1
+                    return
+            self.keep_running = False
 
     async def run(self):
         while self.keep_running:
@@ -87,14 +112,6 @@ class ListMenu(Runnable):
                 i for i, (_, s) in enumerate(self.view[: self.menu_end]) if not s.hidden
             ]
             self.select_idx = viable_indices[self.select_idx % len(viable_indices)]
-            if self.b_pressed:
-                for st, end in self.sub_idx_ranges:
-                    if st <= self.select_idx < end:
-                        # in a submenu
-                        # toggle visibility of submenu
-                        for i in range(st, end):
-                            self.view[i][1].hidden = True
-                        self.select_idx = st - 1
             if self.last_select != self.select_idx:
                 self.view[self.last_select][0].update(
                     0, " " + self.view[self.last_select][0].lines[0][1:]
@@ -103,21 +120,9 @@ class ListMenu(Runnable):
                     0, ">" + self.view[self.select_idx][0].lines[0][1:]
                 )
                 self.last_select = self.select_idx
-            if self.a_pressed:
-                if self.actions[self.select_idx] is not None:
-                    self.keep_running = False
-                    await self.actions[self.select_idx]().run()
-                    continue
-                for st, end in self.sub_idx_ranges:
-                    if st == self.select_idx + 1:
-                        # in a submenu
-                        # toggle visibility of submenu
-                        for i in range(st, end):
-                            self.view[i][1].hidden = not self.view[i][1].hidden
-                        self.view[self.select_idx][0].update(
-                            0,
-                            (">" if self.view[st][1].hidden else "V")
-                            + self.view[self.select_idx][0].lines[0][1:],
-                        )
             self.view.render()
             await asyncio.sleep(0.1)
+        if self.item_selected:
+            action = self.actions[self.select_idx]
+            if action is not None:
+                await action().run()
