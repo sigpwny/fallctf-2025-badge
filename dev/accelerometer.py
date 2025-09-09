@@ -27,6 +27,13 @@ class Accelerometer:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
+    def unsubscribe(self, callback, events):
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].remove(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
+
     def _init(self):
         self._i2c = I2C(0, scl=Pin(21), sda=Pin(33), freq=1_000_000)
         scanned = self._i2c.scan()

@@ -25,6 +25,13 @@ class Joystick:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
+    def unsubscribe(self, callback, events):
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].remove(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
+
     def _current_val(self):
         pass
 

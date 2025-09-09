@@ -47,6 +47,13 @@ class BattleRunner(Runnable):
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
+    def unsubscribe(self, callback, events):
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].remove(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
+
     async def run(self) -> None:
         self.view.update(8, f'Running battle...')
         self.view.render()

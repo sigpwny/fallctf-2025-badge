@@ -126,3 +126,6 @@ class ListMenu(Runnable):
             action = self.actions[self.select_idx]
             if action is not None:
                 await action().run()
+
+        self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
+        self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])

@@ -43,6 +43,8 @@ class HostBattleMenu(Runnable):
         while self.waiting:
             await asyncio.sleep(0.1)
 
+        # self.device_io.wifi.unsubscribe(self.wifi_event, events=['client_join'])
+
 
 class JoinBattleMenu(ListMenu):
     def __init__(self, device_io: 'DeviceIO'):
@@ -58,3 +60,7 @@ class JoinBattleMenu(ListMenu):
 
     def wifi_event(self, event_type, data):
         pass
+
+    async def run(self):
+        await super().run()
+        # self.device_io.wifi.unsubscribe(self.wifi_event, events=['host_broadcast'])

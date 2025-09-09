@@ -23,6 +23,13 @@ class Buttons:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
+    def unsubscribe(self, callback, events):
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].remove(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
+
     async def run(self):
         # buttons are active low
         prev_a_state = self._btn_a.value()
