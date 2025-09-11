@@ -2,6 +2,7 @@ from view import BasicTextView
 from layout import SimpleLayout
 from menu import ListMenu
 from debug_menu import DebugMenu
+from debug_wireless import WirelessDebug
 from battle_menu import HostBattleMenu, JoinBattleMenu
 from circling_ship import CirclingShip
 from layout import Style
@@ -21,7 +22,14 @@ class MainController:
             await ListMenu(
                 self.device_io,
                 [
-                    ("debug", None, lambda: DebugMenu(self.device_io)),
+                    (
+                        "debug",
+                        [
+                            ("peripheral debug", None, lambda: DebugMenu(self.device_io)),
+                            ("wireless debug", None, lambda: WirelessDebug(self.device_io)),
+                        ],
+                        None,
+                    ),
                     (
                         "battle",
                         [

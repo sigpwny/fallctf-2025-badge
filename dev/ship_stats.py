@@ -1,3 +1,6 @@
+import errno
+
+from logger import log
 from factions import FACTIONS, FACTION_UNDECIDED
 from battle import BattleStats, BattleRunner
 
@@ -49,13 +52,19 @@ class ShipStats:
         try:
             self.load_file('save1.txt')
             return
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
         except Exception as e:
-            print(e)
+            log(e, level='prod')
         try:
             self.load_file('save2.txt')
             return
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
         except Exception as e:
-            print(e)
+            log(e, level='prod')
 
     def save(self) -> None:
         self.save_file('save1.txt')

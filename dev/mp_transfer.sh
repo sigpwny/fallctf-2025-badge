@@ -3,6 +3,8 @@
 # compile large python files to mpy
 MPY_CANDIDATES=("ST7735.py" "logger.py" "microfont.py")
 
+set -e
+
 # check that we have mpremote and mpy-cross installed
 if ! command -v mpremote &> /dev/null; then
     echo "mpremote could not be found, please install it first."
