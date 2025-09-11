@@ -8,8 +8,8 @@ if TYPE_CHECKING:
     from display import Display
 
 
-def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt", sleep=0.5):
-    # type: (Display, str, int) -> None
+def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt"):
+    # type: (Display, str) -> None
     # TODO fix colors
     # by `magick pwny8.svg -resize 64x64 -strip -monochrome -depth 1 -define bmp:format=bmp3 mono:- > assets/logo.raw`
     with open("assets/logo.raw", "rb") as f:
@@ -37,4 +37,4 @@ def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt", sleep=0.5)
             Style(posType=0b10, x=-10),
         ),
     ).render()
-    time.sleep(sleep)
+    # time.sleep(sleep)
