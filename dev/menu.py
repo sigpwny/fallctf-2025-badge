@@ -21,8 +21,10 @@ class ListMenu(Runnable):
         self,
         device_io: "DeviceIO",
         items: list['MenuItem'],
+        init_selected: int = 0,
         *,
         additional_views=None,
+        prepended_views=None,
     ):
         self.device_io = device_io
         self.sub_idx_ranges = []
@@ -30,6 +32,9 @@ class ListMenu(Runnable):
         items = items or [("no items", None, None)]
         self.actions: list[Callable[[], Runnable] | None] = []
         self.view = ComplexLayout(device_io.display)
+        if prepended_views is not None:
+            for v, s in prepended_views:
+                self.view.append((v, s))
         for name, sub, action in items:
             self.view.append(
                 (
@@ -53,9 +58,9 @@ class ListMenu(Runnable):
                     self.view[-1][0].update(0, "  " + subname)
                     self.actions.append(action)
                 self.sub_idx_ranges.append((st, len(self.view)))
-        # init
-        self.view[0][0].update(0, ">" + self.view[0][0].lines[0][1:])
+        self.menu_start = len(prepended_views) if prepended_views else 0
         self.menu_end = len(self.view)
+
         if additional_views is not None:
             for v, s in additional_views:
                 self.view.append((v, s))
@@ -66,21 +71,30 @@ class ListMenu(Runnable):
 
         self.keep_running = True
         self.item_selected = False
-        self.last_select = 0
-        self.select_idx = 0
+        self.last_select = init_selected + self.menu_start
+        self.select_idx = init_selected + self.menu_start
+        self._wrap_select_idx()
+
+        first_selected_view = self.view[self.select_idx][0]
+        first_selected_view.update(0, ">" + first_selected_view.lines[0][1:])
+
+    def _wrap_select_idx(self):
+        self.select_idx = (self.select_idx - self.menu_start) % (self.menu_end - self.menu_start) + self.menu_start
 
     def joystick_event(self, event_type, value):
         if event_type == "up-down":
             if value:
-                self.select_idx = (self.select_idx - 1) % self.menu_end
+                self.select_idx -= 1
             else:
-                self.select_idx = (self.select_idx + 1) % self.menu_end
+                self.select_idx += 1
+            self._wrap_select_idx()
+
 
     def button_event(self, button, pressed):
         if not pressed:
             return
         if button == 'a':
-            if self.actions[self.select_idx] is not None:
+            if self.actions[self.select_idx - self.menu_start] is not None:
                 self.keep_running = False
                 self.item_selected = True
                 return
@@ -108,10 +122,6 @@ class ListMenu(Runnable):
 
     async def run(self):
         while self.keep_running:
-            viable_indices = [
-                i for i, (_, s) in enumerate(self.view[: self.menu_end]) if not s.hidden
-            ]
-            self.select_idx = viable_indices[self.select_idx % len(viable_indices)]
             if self.last_select != self.select_idx:
                 self.view[self.last_select][0].update(
                     0, " " + self.view[self.last_select][0].lines[0][1:]
@@ -121,11 +131,19 @@ class ListMenu(Runnable):
                 )
                 self.last_select = self.select_idx
             self.view.render()
-            await asyncio.sleep(0.1)
+            await asyncio.sleep_ms(20)
         if self.item_selected:
-            action = self.actions[self.select_idx]
+            action = self.actions[self.select_idx - self.menu_start]
             if action is not None:
-                await action().run()
+                if isinstance(action, Runnable):
+                    await action.run()
+                elif callable(action):
+                    result = action()
+                    # await if it's a coroutine
+                    if hasattr(result, '__await__'):
+                        await result
+                else:
+                    raise ValueError("Action is neither Runnable nor callable")
 
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])

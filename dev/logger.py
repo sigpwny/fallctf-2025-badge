@@ -61,9 +61,9 @@ class Logger:
         msg += f"({self.log_level.upper()}) "
         msg += ' '.join(str(arg) for arg in args)
 
-        if self.log_level == 'dev' and level == 'dev':
+        if self.log_level == 'dev':
             self._write(msg)
-        elif self.log_level == 'test' and level in ['dev', 'test']:
+        elif self.log_level == 'test' and level in ['test', 'prod']:
             self._write(msg)
-        elif self.log_level == 'prod':
+        elif self.log_level == 'prod' and level == 'prod':
             self._write(msg)

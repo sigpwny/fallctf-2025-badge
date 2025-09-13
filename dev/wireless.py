@@ -1,6 +1,13 @@
 import asyncio
+import gc
+import hashlib
+import micropython
 
 from logger import log
+
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from device_io import DeviceIO
 
 
 class Wireless:
@@ -9,6 +16,7 @@ class Wireless:
     def __init__(self, sta, esp):
         self.sta = sta
         self.esp = esp
+        self.tx_power = 2  # unit: dBm, max is 20 dBm but that drains battery faster
 
         self.subscribers = {'adv': []}
 
@@ -16,11 +24,33 @@ class Wireless:
         self.is_active = True
         self.down()
 
+    @staticmethod
+    def mac_to_usable(mac: bytes) -> str:
+        """
+        Convert a MAC address to a user-friendly string.
+        """
+        # mac_as_hex_bytes = ''.join(f'{b:02x}' for b in mac)
+        mac_hashed = hashlib.sha256(mac).digest()
+        mac_hashed_as_hex_bytes = ''.join(f'{b:02x}' for b in mac_hashed)[:5]
+
+        return mac_hashed_as_hex_bytes
+
+    def my_mac(self) -> bytes:
+        return self.sta.config('mac')
+
+    def rssi_to_display(self, rssi: int) -> str:
+        return f'{rssi:+d}dBm'
+
     def up(self):
         if self.is_active:
             log('WARNING: Wireless up() called when already up', level='test')
+
+        gc.collect()
+        log(f'Free memory before WiFi up: {gc.mem_free()} bytes')
+        micropython.mem_info()
+
         self.sta.active(True)
-        self.sta.config(txpower=14.50)
+        self.sta.config(txpower=self.tx_power)
         self.esp.active(True)
         self.is_active = True
 
@@ -43,7 +73,6 @@ class Wireless:
                 self.esp.add_peer(self.BROADCAST_MAC)
             else:
                 raise
-        log('Advertising...')
         self.esp.send(self.BROADCAST_MAC, b'ADV', False)
 
     def subscribe(self, callback, events):
@@ -53,12 +82,18 @@ class Wireless:
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
+    def unsubscribe(self, callback, events):
+        for event in events:
+            if event in self.subscribers:
+                self.subscribers[event].remove(callback)
+            else:
+                raise ValueError(f"Unknown event type: {event}")
+
     async def run(self):
         while True:
             if self.is_active:
                 host, msg = await self.esp.airecv()
                 if msg == b'ADV':
-                    log(f'Advertisement received from {host}')
                     if host in self.esp.peers_table:
                         rssi = self.esp.peers_table[host][0]
                     else:

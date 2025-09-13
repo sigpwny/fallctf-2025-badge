@@ -15,13 +15,6 @@ if TYPE_CHECKING:
 class DebugMenu(Runnable):
     def __init__(self, device_io: 'DeviceIO'):
         self.device_io = device_io
-        self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
-
-        self.device_io.joystick.subscribe(self.joystick_event, events=[
-                                'xy', 'up-down', 'left-right'])
-        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
-        self.device_io.accelerometer.subscribe(self.accel_event, events=['xyz'])
-        self.view.first_render()
 
     def joystick_event(self, event_type, value):
         if event_type == 'xy':
@@ -72,6 +65,14 @@ class DebugMenu(Runnable):
             9, f'{self.device_io.ship_stats.stardust} (+{stardust_received}) SD')
 
     async def run(self):
+        self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
+
+        self.device_io.joystick.subscribe(self.joystick_event, events=[
+                                'xy', 'up-down', 'left-right'])
+        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
+        self.device_io.accelerometer.subscribe(self.accel_event, events=['xyz'])
+        self.view.first_render()
+
         while True:
             self.view.update(5, f'Time: {time.time_ns()/1e9:.2f} s')
             self.view.update(

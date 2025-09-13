@@ -51,9 +51,9 @@ class JoinBattleMenu(ListMenu):
         super().__init__(device_io,
         # simulate a couple connections
                          [
-                             ('id1', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
-                             ('id2', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
-                             ('id3', None, lambda: BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                             ('id1', None, BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                             ('id2', None, BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
+                             ('id3', None, BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), ShipStats().get_battle_stats())),
                          ])
 
         # self.device_io.wifi.subscribe(self.wifi_event, events=['host_broadcast'])

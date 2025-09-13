@@ -13,15 +13,7 @@ if TYPE_CHECKING:
 class WirelessDebug(Runnable):
     def __init__(self, device_io: 'DeviceIO'):
         self.device_io = device_io
-        self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
-
-        self.device_io.joystick.subscribe(self.joystick_event, events=['up-down', 'left-right'])
-        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
-        self.device_io.wireless.subscribe(self.wireless_event, events=['adv'])
-
         self.recent_wireless_events = []
-
-        self.view.first_render()
 
     def joystick_event(self, event_type, value):
         if event_type == 'up-down':
@@ -50,6 +42,12 @@ class WirelessDebug(Runnable):
             self.view.render()
  
     async def run(self):
+        self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))
+        self.device_io.joystick.subscribe(self.joystick_event, events=['up-down', 'left-right'])
+        self.device_io.buttons.subscribe(self.button_event, events=['a', 'b'])
+        self.device_io.wireless.subscribe(self.wireless_event, events=['adv'])
+        self.view.first_render()
+
         peers = []
         while True:
             boot_time = time.time_ns()/1e9
