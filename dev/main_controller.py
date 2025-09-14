@@ -3,6 +3,7 @@ from menu import ListMenu, menu_with_text
 # from debug_menu import DebugMenu
 # from debug_wireless import WirelessDebug
 from circling_ship import CirclingShip
+from color_test import ColorTest
 from layout import Style
 import wireless
 from connect import ConnectMenu
@@ -38,9 +39,12 @@ class MainController:
                 ],
                 additional_views=[
                     (
-                        CirclingShip(self.device_io.display, height=50),
-                        # cannot use relative positioning here due to if menu unfolds
-                        Style(posType=0b00, x=0, y=70),
+                        CirclingShip(self.device_io.display, height=40),
+                        Style(posType=0b01, x=0, y=5),
+                    ),
+                    (
+                        ColorTest(self.device_io.display, height=20),
+                        Style(posType=0b01, x=0, y=5),
                     )
                 ],
             ).run()

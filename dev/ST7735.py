@@ -30,7 +30,9 @@ def clamp( aValue, aMin, aMax ) :
 def TFTColor( aR, aG, aB ) :
   '''Create a 16 bit rgb value from the given R,G,B from 0-255.
      This assumes rgb 565 layout and will be incorrect for bgr.'''
-  return ((aR & 0xF8) << 8) | ((aG & 0xFC) << 3) | (aB >> 3)
+  val = ((aR & 0xF8) << 8) | ((aG & 0xFC) << 3) | (aB >> 3)
+  # convert endianess for framebuf
+  return ((val & 0xFF) << 8) | (val >> 8)
 
 ScreenSize = (130, 161)
 
