@@ -17,14 +17,21 @@ def checksum(data: list[int]) -> int:
 class ShipStats:
     def __init__(self) -> None:
         self.stardust = 0
-        self.resets = 0
 
         self.faction = FACTION_UNDECIDED
         self.stats = {'weapons': 0, 'shields': 0, 'thrusters': 0, 'sensors': 0}
 
+        self.battled: dict[bytes, int] = {}
+
     def load_file(self, filename: str) -> None:
-        data = []
+        log(f'loading {filename}', level='prod')
+
+        data: list[int] = []
         with open(filename) as f:
+            num_battled = int(next(f))
+            for _ in range(num_battled):
+                battled, num = next(f).split()
+                self.battled[bytes.fromhex(battled)] = int(num)
             for line in f:
                 data.append(int(line))
 
@@ -33,16 +40,22 @@ class ShipStats:
             raise Exception(
                 f'Loading file {filename} checksum failed. Possibly corrupted or modified save file.')
 
-        self.stardust, self.resets, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
+        self.stardust, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
         self.faction = FACTIONS[faction_idx]
 
+
     def save_file(self, filename: str) -> None:
+        log(f'saving to {filename}', level='prod')
+
         faction_idx = FACTIONS.index(self.faction)
-        data = [self.stardust, self.resets, faction_idx,
+        data = [self.stardust, faction_idx,
                 self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors']]
 
         chk = checksum(data)
         with open(filename, 'w') as f:
+            f.write(f'{len(self.battled)}\n')
+            for b in self.battled:
+                f.write(f'{b.hex()} {self.battled[b]}\n')
             for x in data:
                 f.write(f'{x}\n')
             f.write(f'{chk}\n')
@@ -77,10 +90,19 @@ class ShipStats:
             sensors=self.stats['sensors'] + self.faction.boosts.get('sensors', 0),
         )
 
-    def receive_stardust(self, won: bool) -> int:
-        stardust_received = 100
+    def receive_stardust(self, won: bool, opp: bytes) -> int:
+        stardust_received = 50
         if won:
-            stardust_received += 50
+            stardust_received += 100
+        if opp in self.battled:
+            self.battled[opp] += 1
+            repeated_battles = self.battled[opp]
+        else:
+            repeated_battles = self.battled[opp] = 0
+
+        for _ in range(repeated_battles):
+            stardust_received = (stardust_received + 9) // 10
+
         self.stardust += stardust_received
         self.save()
         return stardust_received

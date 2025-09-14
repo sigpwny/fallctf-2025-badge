@@ -239,7 +239,7 @@ class ConnectMenu(Runnable):
                 )
             elif self._state == ConnectMenuState.BATTLE:
                 if self._battle is not None:
-                    await self._battle.run(switch_side=self._host_side, seed=self._combined_random_seed)
+                    await self._battle.run(switch_side=self._host_side, seed=self._combined_random_seed, opp=self._peer)
                     self._combined_random_seed = None
                     self._battle = None
                     self._host_side = None

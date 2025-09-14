@@ -80,7 +80,7 @@ class BattleRunner(Runnable):
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
-    async def run(self, switch_side=False, seed: int | None = None):
+    async def run(self, switch_side=False, seed: int | None = None, opp: bytes = b'ffffffffffff'):
         # generate all values ahead of time since we are seeding the PRNG
         if seed is not None:
             log(f'Seeding battle with {seed}')
@@ -103,13 +103,13 @@ class BattleRunner(Runnable):
 
         win_msg = ''
         if self.is_tie():
-            sd_recv = self.device_io.ship_stats.receive_stardust(won=False)
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=False, opp=opp)
             win_msg = f'tie (+{sd_recv} SD)'
         elif self.ship1_won() and not switch_side or self.ship2_won() and switch_side:
-            sd_recv = self.device_io.ship_stats.receive_stardust(won=True)
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=True, opp=opp)
             win_msg = f'you win! (+{sd_recv} SD)'
         else:
-            sd_recv = self.device_io.ship_stats.receive_stardust(won=False)
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=False, opp=opp)
             win_msg = f'you lose! (+{sd_recv} SD)'
 
         self.view.first_render()

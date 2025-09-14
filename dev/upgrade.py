@@ -15,7 +15,7 @@ class UpgradeMenu(Runnable):
         self.last_msg = ''
         self.keep_running = True
         self.device_io.buttons.subscribe(self.button_event, events=['b'])
-        self.prev_stats = None
+        self.prev_stats: None | tuple[int, dict[str, int]] = None
         while self.keep_running:
             items: list[MenuItem] = []
             for s in ['weapons', 'shields', 'thrusters', 'sensors']:
