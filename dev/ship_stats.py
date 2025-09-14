@@ -16,7 +16,6 @@ def checksum(data: list[int]) -> int:
 
 class ShipStats:
     def __init__(self) -> None:
-        self.total_stardust = 0
         self.stardust = 0
         self.resets = 0
 
@@ -34,12 +33,12 @@ class ShipStats:
             raise Exception(
                 f'Loading file {filename} checksum failed. Possibly corrupted or modified save file.')
 
-        self.total_stardust, self.stardust, self.resets, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
+        self.stardust, self.resets, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
         self.faction = FACTIONS[faction_idx]
 
     def save_file(self, filename: str) -> None:
         faction_idx = FACTIONS.index(self.faction)
-        data = [self.total_stardust, self.stardust, self.resets, faction_idx,
+        data = [self.stardust, self.resets, faction_idx,
                 self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors']]
 
         chk = checksum(data)
@@ -83,7 +82,6 @@ class ShipStats:
         if won:
             stardust_received += 50
         self.stardust += stardust_received
-        self.check_for_reset()
         self.save()
         return stardust_received
 
@@ -100,23 +98,3 @@ class ShipStats:
         '''Returns the amount of stardust needed to upgrade from the given level'''
         levels = sum(self.stats.values())
         return (10 + levels) ** 2
-
-    def get_rank(self) -> str:
-        # TODO rank class which determines how user is drawn
-        if self.total_stardust <= 100:
-            return 'Nebula'
-        if self.total_stardust <= 500:
-            return 'Protostar'
-        if self.total_stardust <= 1000:
-            return 'Massive Star'
-        if self.total_stardust <= 2000:
-            return 'Red Supergiant'
-        if self.total_stardust <= 2200:
-            return 'Supernova'
-        return 'Black Hole'
-
-    def check_for_reset(self) -> None:
-        if self.get_rank() == 'Black Hole':
-            self.total_stardust = 0
-            self.stardust = 0
-            self.resets += 1
