@@ -82,7 +82,6 @@ class Wireless:
                 self.esp.add_peer(mac)
             else:
                 raise
-        log(f'Sending message to {mac.hex()}: {msg}')
         return self.esp.send(mac, msg, sync)
 
     def subscribe(self, callback):

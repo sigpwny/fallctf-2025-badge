@@ -2,9 +2,9 @@ from view import BasicTextView
 from menu import ListMenu
 # from debug_menu import DebugMenu
 # from debug_wireless import WirelessDebug
-from battle_menu import HostBattleMenu, JoinBattleMenu
 from circling_ship import CirclingShip
 from layout import Style
+import wireless
 from connect import ConnectMenu
 
 from logger import log
@@ -30,14 +30,6 @@ class MainController:
                         [
                             # ("peripheral debug", None, DebugMenu(self.device_io)),
                             # ("wireless debug", None, WirelessDebug(self.device_io)),
-                        ],
-                        None,
-                    ),
-                    (
-                        "battle",
-                        [
-                            # ("host", None, HostBattleMenu(self.device_io)),
-                            # ("join", None, JoinBattleMenu(self.device_io)),
                         ],
                         None,
                     ),

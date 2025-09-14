@@ -1,4 +1,5 @@
 import asyncio
+import random
 import time
 
 from layout import Style
@@ -10,13 +11,15 @@ from logger import log
 
 
 class ConnectMenuState:
-    SCANNING = 0
-    CONFIRM = 1
-    HOST_CONN_REQ = 2
-    HOST = 3
-    CLIENT = 4
-    GOBACK = 5
-    CONN_FAILED = 6
+    SCANNING            = 0
+    CONFIRM             = 1
+    HOST_CONN_REQ       = 2
+    READY_TO_BATTLE     = 3
+    CLIENT_CONN_CONFIRM = 4
+    GOBACK              = 5
+    CONN_FAILED         = 6
+    BATTLE              = 7
+    DISCONNECT          = 8
 
 
 class ConnectMenu(Runnable):
@@ -29,10 +32,16 @@ class ConnectMenu(Runnable):
         self._recent_peers = []
         self._cancel_menu_event = asyncio.Event()
         self._state = ConnectMenuState.SCANNING
-        self._pending_peer = None
+        self._peer = None
         self._last_refresh = 0
+        self._battle = None
+        self._my_random_seed = None
+        self._combined_random_seed = 0
+        self._host_side = None
 
-    def wireless_event(self, msg, host, rssi):
+    def _wireless_event(self, msg, host, rssi):
+        # log(f'ConnectMenu received wireless event from {host.hex()}: {msg} (rssi={rssi}), state={self._state}')
+
         if msg == b'ADV' and self._state == ConnectMenuState.SCANNING:
             peer = (rssi, time.ticks_ms(), host)
 
@@ -48,17 +57,58 @@ class ConnectMenu(Runnable):
             self._recent_peers.sort(reverse=True, key=lambda p: p[0])
 
             self._refresh_peerlist()
-        elif msg == b'CONN_ACK' and self._state == ConnectMenuState.HOST_CONN_REQ and host == self._pending_peer:
-            log(f'Received CONN_ACK from {host.hex()}')
-            self._state = ConnectMenuState.HOST
-        else:
-            log(f'ConnectMenu received unknown wireless msg from {host.hex()}: {msg}')
+        elif msg == b'CONN_REQ' and self._state in [
+                ConnectMenuState.SCANNING,
+                ConnectMenuState.CONFIRM,
+                ConnectMenuState.CONN_FAILED
+            ]:
+            log(f'Received CONN_REQ from {host.hex()}')
+            self._peer = host
+            self._state = ConnectMenuState.CLIENT_CONN_CONFIRM
+            self._cancel_menu_event.set() # cancel current menu to show connection request
+            self._host_side = False
+        elif host == self._peer:
+            if msg == b'CONN_ACK' and self._state == ConnectMenuState.HOST_CONN_REQ:
+                log(f'Received CONN_ACK from {host.hex()}')
+                self._state = ConnectMenuState.READY_TO_BATTLE
+                self._cancel_menu_event.set() # end "Connecting..." menu
+                self._host_side = True
+            elif msg == b'DISCONNECT' and self._state in [
+                    ConnectMenuState.READY_TO_BATTLE,
+                    ConnectMenuState.HOST_CONN_REQ,
+                    ConnectMenuState.CLIENT_CONN_CONFIRM
+                ]:
+                log(f'Received DISCONNECT from {host.hex()}')
+                self._state = ConnectMenuState.CONN_FAILED
+                self._cancel_menu_event.set() # end current menu
+            elif msg.startswith(b'BATTLE_INFO') and self._state == ConnectMenuState.READY_TO_BATTLE:
+                log(f'Received {msg} from {host.hex()}')
+                data = msg[len(b'BATTLE_INFO'):]
+                other_random_seed = int.from_bytes(data[0:4], 'little')
+                self._combined_random_seed = self._my_random_seed ^ other_random_seed
+                self._my_random_seed = None
+                other_stats_data = data[4:]
+                try:
+                    from battle import BattleStats, BattleRunner
+                    other_stats = BattleStats.deserialize(other_stats_data)
+                    my_stats = self.device_io.ship_stats.get_battle_stats()
+                    self._battle = BattleRunner(self.device_io, my_stats, other_stats)
+                    self._state = ConnectMenuState.BATTLE
+                    self._cancel_menu_event.set() # end "Starting battle..." menu
+                except Exception as e:
+                    log(f'Error deserializing other stats or starting battle: {e}', level='error')
+                    self._state = ConnectMenuState.CONN_FAILED
+                    self._cancel_menu_event.set()
+            else:
+                log(f'ConnectMenu received unknown wireless msg from {host.hex()}: {msg}')
 
-    def _state_change_func(self, new_state, new_pending_peer=None):
+    def _state_change_func(self, new_state, new_pending_peer=None, send_msg=None):
         def inner():
+            if send_msg is not None and self._peer is not None:
+                self.device_io.wireless.send(self._peer, send_msg, sync=False)
             self._state = new_state
             if new_pending_peer is not None:
-                self._pending_peer = new_pending_peer
+                self._peer = new_pending_peer
         return inner
 
     def _refresh_peerlist(self):
@@ -116,13 +166,14 @@ class ConnectMenu(Runnable):
 
 
     async def run(self):
-        self.device_io.wireless.subscribe(self.wireless_event)
+        self.device_io.wireless.subscribe(self._wireless_event)
 
         while True:
             log(f'ConnectMenu state: {self._state}')
             if self._state == ConnectMenuState.SCANNING:
                 self._recent_peers = []
-                self._pending_peer = None
+                self._peer = None
+                self._host_side = None
 
                 # reboot wifi if not active
                 if self.device_io.wireless.is_active:
@@ -135,51 +186,69 @@ class ConnectMenu(Runnable):
                 log('Going back from ConnectMenu')
                 break
             elif self._state == ConnectMenuState.CONFIRM:
+                self._cancel_menu_event.clear()
                 await menu_with_text(
                     self.device_io,
-                    ['Connect to', f'{Wireless.mac_to_usable(self._pending_peer)}?'],
+                    ['Connect to', f'{Wireless.mac_to_usable(self._peer)}?'],
                     [
                         ('Yes', None, self._state_change_func(ConnectMenuState.HOST_CONN_REQ)),
                         ('No', None, self._state_change_func(ConnectMenuState.SCANNING)),
-                    ]
+                    ],
+                    cancel_event=self._cancel_menu_event
                 )
             elif self._state == ConnectMenuState.HOST_CONN_REQ:
-                self.device_io.wireless.send(self._pending_peer, b'CONN_REQ', sync=False)
+                self.device_io.wireless.send(self._peer, b'CONN_REQ', sync=False)
                 self._cancel_menu_event.clear()
                 await menu_with_text(
                     self.device_io,
                     ['Connecting...'],
-                    [
-                        ('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING)),
-                    ],
+                    [('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))],
                     cancel_event=self._cancel_menu_event
                 )
-            elif self._state == ConnectMenuState.HOST:
+            elif self._state == ConnectMenuState.READY_TO_BATTLE:
+                stats = self.device_io.ship_stats.get_battle_stats().serialize()
+                self._my_random_seed = random.getrandbits(32)
+                random_seed = self._my_random_seed.to_bytes(4, 'little')
+                self.device_io.wireless.send(self._peer, b'BATTLE_INFO' + random_seed + stats, sync=False)
                 self._cancel_menu_event.clear()
-                host_menu = menu_with_text(
-                    self.device_io,
-                    ['Connected to', f'{Wireless.mac_to_usable(self._pending_peer)}'],
-                    [
-                        ('Disconnect', None, self._state_change_func(ConnectMenuState.GOBACK)),
-                    ],
-                    cancel_event=self._cancel_menu_event
-                )
-                await host_menu.run()
-            elif self._state == ConnectMenuState.CONN_FAILED:
                 await menu_with_text(
                     self.device_io,
-                    ['Connection failed', 'or lost'],
-                    [
-                        ('OK', None, self._state_change_func(ConnectMenuState.SCANNING)),
-                    ]
+                    ['Starting battle...'],
+                    [('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))],
+                    cancel_event=self._cancel_menu_event
                 )
+            elif self._state == ConnectMenuState.CLIENT_CONN_CONFIRM:
+                self._cancel_menu_event.clear()
+                await menu_with_text(
+                    self.device_io,
+                    ['Connection request', f'from {Wireless.mac_to_usable(self._peer)}'],
+                    [
+                        ('Accept', None, self._state_change_func(ConnectMenuState.READY_TO_BATTLE, send_msg=b'CONN_ACK')),
+                        ('Decline', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))
+                    ],
+                    cancel_event=self._cancel_menu_event
+                )
+            elif self._state == ConnectMenuState.CONN_FAILED or self._state == ConnectMenuState.DISCONNECT:
+                msgs = ['Connection failed' if self._state == ConnectMenuState.CONN_FAILED else 'Disconnected']
+                if self._peer is not None:
+                    msgs.append(f'with peer: {Wireless.mac_to_usable(self._peer)}')
+                await menu_with_text(
+                    self.device_io,
+                    msgs,
+                    [('OK', None, self._state_change_func(ConnectMenuState.SCANNING)),]
+                )
+            elif self._state == ConnectMenuState.BATTLE:
+                if self._battle is not None:
+                    await self._battle.run(switch_side=self._host_side, seed=self._combined_random_seed)
+                    self._combined_random_seed = None
+                    self._battle = None
+                    self._host_side = None
+                self._state = ConnectMenuState.GOBACK
             else:
                 await menu_with_text(
                     self.device_io,
                     ['Unknown state in', f'ConnectMenu: {self._state}'],
-                    [
-                        ('OK', None, self._state_change_func(ConnectMenuState.GOBACK)),
-                    ]
+                    [('OK', None, self._state_change_func(ConnectMenuState.GOBACK)),]
                 )
 
         # stop wifi to save power
@@ -188,4 +257,4 @@ class ConnectMenu(Runnable):
         else:
             log('WARNING: Wireless was already down when exiting ConnectMenu', level='test')
 
-        self.device_io.wireless.unsubscribe(self.wireless_event)
+        self.device_io.wireless.unsubscribe(self._wireless_event)

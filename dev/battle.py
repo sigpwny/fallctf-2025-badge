@@ -3,7 +3,9 @@ import asyncio
 
 from layout import SimpleLayout
 from view import BasicTextView
-from menu import Runnable
+from menu import Runnable, menu_with_text
+
+from logger import log
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -23,7 +25,7 @@ class BattleStats:
         # serialize as 4 bytes each, little-endian
         data = bytearray(16)
         for i, stat in enumerate((self.weapons, self.shields, self.thrusters, self.sensors)):
-            data[i*4:(i+1)*4] = stat.to_bytes(4, 'little', signed=True)
+            data[i*4:(i+1)*4] = stat.to_bytes(4, 'little')
         return bytes(data)
 
     @staticmethod
@@ -32,9 +34,12 @@ class BattleStats:
             raise ValueError('Invalid data length for BattleStats deserialization')
         stats = []
         for i in range(4):
-            stat = int.from_bytes(data[i*4:(i+1)*4], 'little', signed=True)
+            stat = int.from_bytes(data[i*4:(i+1)*4], 'little')
             stats.append(stat)
         return BattleStats(*stats)
+
+    def __repr__(self) -> str:
+        return f'BattleStats(weapons={self.weapons}, shields={self.shields}, thrusters={self.thrusters}, sensors={self.sensors})'
 
 
 def run_chase(attacker: BattleStats, defender: BattleStats) -> int:
@@ -48,9 +53,11 @@ def run_attack(attacker: BattleStats, defender: BattleStats, chase_bonus: int) -
 
 class BattleRunner(Runnable):
     def __init__(self, device_io: 'DeviceIO', ship1: BattleStats, ship2: BattleStats, view: SimpleLayout | None = None) -> None:
+        log(f'BattleRunner: {ship1=}, {ship2=}')
         self.subscribers = {'result': []}
         self.ship1 = ship1
         self.ship2 = ship2
+        self.device_io = device_io
         self.view = view or SimpleLayout(device_io.display, BasicTextView(device_io.display))
 
 
@@ -73,46 +80,48 @@ class BattleRunner(Runnable):
             else:
                 raise ValueError(f"Unknown event type: {event}")
 
-    async def run(self) -> None:
-        self.view.update(8, f'Running battle...')
-        self.view.render()
-
-        await asyncio.sleep(1)
+    async def run(self, switch_side=False, seed: int | None = None):
+        # generate all values ahead of time since we are seeding the PRNG
+        if seed is not None:
+            log(f'Seeding battle with {seed}')
+            random.seed(seed)
         self.ship1_chase_2_bonus = run_chase(self.ship1, self.ship2)
-        self.view.update(8, f'1 chase 2: {self.ship1_chase_2_bonus}...')
-        self.view.render()
-
-        await asyncio.sleep(1)
-        self.damage_to_2 = run_attack(
-            self.ship1, self.ship2, self.ship1_chase_2_bonus)
-        self.view.update(8, f'1 attack 2: {self.damage_to_2}...')
-        self.view.render()
-
-        await asyncio.sleep(1)
+        self.damage_to_2 = run_attack(self.ship1, self.ship2, self.ship1_chase_2_bonus)
         self.ship2_chase_1_bonus = run_chase(self.ship2, self.ship1)
-        self.view.update(8, f'2 chase 1: {self.ship2_chase_1_bonus}...')
-        self.view.render()
+        self.damage_to_1 = run_attack(self.ship2, self.ship1, self.ship2_chase_1_bonus)
 
-        await asyncio.sleep(1)
-        self.damage_to_1 = run_attack(
-            self.ship2, self.ship1, self.ship2_chase_1_bonus)
-        self.view.update(8, f'2 attack 1: {self.damage_to_1}...')
-        self.view.render()
+        my_side = 'me' if not switch_side else 'other'
+        other_side = 'other' if not switch_side else 'me'
+        msgs = [
+            'Running battle...',
+            '(values indicate HP gained/lost)',
+            f'{my_side} chase {other_side}: {self.ship1_chase_2_bonus}',
+            f'{my_side} attack {other_side}: {self.damage_to_2}',
+            f'{other_side} chase {my_side}: {self.ship2_chase_1_bonus}',
+            f'{other_side} attack {my_side}: {self.damage_to_1}',
+        ]
 
-        await asyncio.sleep(1)
-        if self.ship1_won():
-            self.view.update(8, f'result: ship 1 won')
+        self.view.first_render()
+        for i, msg in enumerate(msgs):
+            self.view.update(i, msg)
             self.view.render()
-        if self.ship2_won():
-            self.view.update(8, f'result: ship 2 won')
-            self.view.render()
+            await asyncio.sleep_ms(500)
+
+        win_msg = ''
         if self.is_tie():
-            self.view.update(8, f'result: tie')
-            self.view.render()
+            win_msg = 'tie'
+        elif self.ship1_won() and not switch_side or self.ship2_won() and switch_side:
+            win_msg = 'you win!'
+        else:
+            win_msg = 'you lose!'
 
-        await asyncio.sleep(1)
         for callback in self.subscribers['result']:
             callback('result', self)
+
+        # note: we can't have no action because that is used for submenus
+        # we use an empty lambda instead
+        await menu_with_text(self.device_io, msgs + [win_msg], [('OK', None, lambda: None)])
+
 
     def ship1_won(self) -> bool:
         return self.damage_to_1 < self.damage_to_2

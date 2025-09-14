@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # compile large python files to mpy
-MPY_CANDIDATES=("ST7735.py" "logger.py" "microfont.py")
+MPY_CANDIDATES=("ST7735.py" "logger.py" "microfont.py" "wireless.py" "connect.py")
 
 serial_port="$(ls -1 /dev/cu*usb* 2>/dev/null | head -n 1)"
 mpremote_connect="connect $serial_port"
