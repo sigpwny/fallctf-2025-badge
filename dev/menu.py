@@ -8,7 +8,7 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     from typing import Callable
     from device_io import DeviceIO
-    MenuItem = tuple[str, list['MenuItem'] | None, Callable[[], 'Runnable'] | None]
+    MenuItem = tuple[str, list['MenuItem'] | None, 'Runnable' | Callable[[], 'Runnable | None'] | None]
 
 
 class Runnable:

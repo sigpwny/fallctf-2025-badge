@@ -38,7 +38,7 @@ class DebugMenu(Runnable):
             # test out battle stuff
             other_ship = ShipStats()
             battle = BattleRunner(self.device_io, self.device_io.ship_stats.get_battle_stats(), other_ship.get_battle_stats(), self.view)
-            battle.subscribe(self.battle_event, events=['result'])
+            # battle.subscribe(self.battle_event, events=['result'])
             asyncio.create_task(battle.run())
         if button == 'b' and pressed:
             # testing upgrades
@@ -58,11 +58,6 @@ class DebugMenu(Runnable):
             x, y, z = value['x'], value['y'], value['z']
             self.view.update(7, f'{x:+.2f} {y:+.2f} {z:+.2f}')
             self.view.render()
-
-    def battle_event(self, event, battle):
-        stardust_received = self.device_io.ship_stats.receive_stardust(True, battle)
-        self.view.update(
-            9, f'{self.device_io.ship_stats.stardust} (+{stardust_received}) SD')
 
     async def run(self):
         self.view = SimpleLayout(device_io.display, BasicTextView(device_io.display))

@@ -78,16 +78,16 @@ class ShipStats:
             sensors=self.stats['sensors'] + self.faction.boosts.get('sensors', 0),
         )
 
-    def receive_stardust(self, is_ship1: bool, battle: BattleRunner) -> int:
+    def receive_stardust(self, won: bool) -> int:
         stardust_received = 100
-        if is_ship1 and battle.ship1_won() or not is_ship1 and battle.ship2_won():
+        if won:
             stardust_received += 50
         self.stardust += stardust_received
         self.check_for_reset()
         self.save()
         return stardust_received
 
-    def upgrade(self, stat) -> bool:
+    def upgrade(self, stat: str) -> bool:
         if self.stardust >= self.cost_to_upgrade():
             self.stardust -= self.cost_to_upgrade()
             self.stats[stat] += 1

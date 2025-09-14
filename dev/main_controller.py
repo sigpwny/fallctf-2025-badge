@@ -1,11 +1,12 @@
 from view import BasicTextView
-from menu import ListMenu
+from menu import ListMenu, menu_with_text
 # from debug_menu import DebugMenu
 # from debug_wireless import WirelessDebug
 from circling_ship import CirclingShip
 from layout import Style
 import wireless
 from connect import ConnectMenu
+from upgrade import UpgradeMenu
 
 from logger import log
 
@@ -25,6 +26,7 @@ class MainController:
                 self.device_io,
                 [
                     ("connect", None, ConnectMenu(self.device_io)),
+                    ("upgrade", None, UpgradeMenu(self.device_io)),
                     (
                         "debug",
                         [

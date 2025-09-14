@@ -101,19 +101,22 @@ class BattleRunner(Runnable):
             f'{other_side} attack {my_side}: {self.damage_to_1}',
         ]
 
+        win_msg = ''
+        if self.is_tie():
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=False)
+            win_msg = f'tie (+{sd_recv} SD)'
+        elif self.ship1_won() and not switch_side or self.ship2_won() and switch_side:
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=True)
+            win_msg = f'you win! (+{sd_recv} SD)'
+        else:
+            sd_recv = self.device_io.ship_stats.receive_stardust(won=False)
+            win_msg = f'you lose! (+{sd_recv} SD)'
+
         self.view.first_render()
         for i, msg in enumerate(msgs):
             self.view.update(i, msg)
             self.view.render()
             await asyncio.sleep_ms(500)
-
-        win_msg = ''
-        if self.is_tie():
-            win_msg = 'tie'
-        elif self.ship1_won() and not switch_side or self.ship2_won() and switch_side:
-            win_msg = 'you win!'
-        else:
-            win_msg = 'you lose!'
 
         for callback in self.subscribers['result']:
             callback('result', self)
