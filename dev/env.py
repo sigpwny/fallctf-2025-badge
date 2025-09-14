@@ -40,6 +40,7 @@ class Environment:
         from device_io import DeviceIO
         from ship_stats import ShipStats
         from wireless import Wireless
+        from speaker import Speaker
 
         joystick = Joystick()
         buttons = Buttons()
@@ -50,9 +51,11 @@ class Environment:
         if self.early_board_init is None:
             raise RuntimeError("wireless has not been initialized")
         wireless = Wireless(self.early_board_init.sta, self.early_board_init.esp)
-        device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats, wireless)
+        speaker = Speaker()
+        device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats, wireless, speaker)
         main_controller = MainController(device_io)
 
+        speaker.success_sound()
         await asyncio.gather(
             main_controller.run(),
             display.run(),
@@ -61,4 +64,5 @@ class Environment:
             accelerometer.run(),
             power.run(),
             wireless.run(),
+            speaker.run(),
         )

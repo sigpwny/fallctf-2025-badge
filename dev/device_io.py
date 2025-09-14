@@ -7,10 +7,13 @@ if TYPE_CHECKING:
     from accelerometer import Accelerometer
     from power import PowerMonitor
     from wireless import Wireless
+    from speaker import Speaker
 
 
 class DeviceIO:
-    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', accelerometer: 'Accelerometer', power: 'PowerMonitor', display: 'Display', ship_stats: 'ShipStats', wireless: 'Wireless'):
+    def __init__(self, joystick: 'Joystick', buttons: 'Buttons', accelerometer: 'Accelerometer', 
+                 power: 'PowerMonitor', display: 'Display', ship_stats: 'ShipStats', 
+                 wireless: 'Wireless', speaker: 'Speaker'):
         self.joystick = joystick
         self.buttons = buttons
         self.display = display
@@ -18,3 +21,4 @@ class DeviceIO:
         self.accelerometer = accelerometer
         self.power = power
         self.wireless = wireless
+        self.speaker = speaker
