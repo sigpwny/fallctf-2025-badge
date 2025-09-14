@@ -36,7 +36,7 @@ class Accelerometer:
                 raise ValueError(f"Unknown event type: {event}")
 
     def _init(self):
-        self._i2c = I2C(0, scl=Pin(21), sda=Pin(33), freq=1_000_000, timeout=100)
+        self._i2c = I2C(0, scl=Pin(21), sda=Pin(33), freq=400_000, timeout=100)
         scanned = self._i2c.scan()
         self._addr = 0x0f
         if self._addr not in scanned:

@@ -86,4 +86,4 @@ class Joystick:
                     callback('up-down', y_dir_state == -1)
             prev_y_dir_state = y_dir_state
 
-            await asyncio.sleep_ms(1)
+            await asyncio.sleep_ms(10)

@@ -25,6 +25,7 @@ class ListMenu(Runnable):
         *,
         additional_views=None,
         prepended_views=None,
+        cancel_event=None
     ):
         self.device_io = device_io
         self.sub_idx_ranges = []
@@ -77,6 +78,8 @@ class ListMenu(Runnable):
 
         first_selected_view = self.view[self.select_idx][0]
         first_selected_view.update(0, ">" + first_selected_view.lines[0][1:])
+
+        self.cancel_event = cancel_event
 
     def _wrap_select_idx(self):
         self.select_idx = (self.select_idx - self.menu_start) % (self.menu_end - self.menu_start) + self.menu_start
@@ -132,6 +135,8 @@ class ListMenu(Runnable):
                 self.last_select = self.select_idx
             self.view.render()
             await asyncio.sleep_ms(20)
+            if self.cancel_event is not None and self.cancel_event.is_set():
+                self.keep_running = False
         if self.item_selected:
             action = self.actions[self.select_idx - self.menu_start]
             if action is not None:
@@ -147,3 +152,14 @@ class ListMenu(Runnable):
 
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
+
+async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
+    text_view = BasicTextView(device_io.display)
+    for i, line in enumerate(text_list):
+        text_view.update(i, line)
+    await ListMenu(
+        device_io,
+        menu_items,
+        prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
+        cancel_event=cancel_event
+    ).run()

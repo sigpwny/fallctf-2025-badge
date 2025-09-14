@@ -2,6 +2,7 @@ import asyncio
 import gc
 import hashlib
 import micropython
+import time
 
 from logger import log
 
@@ -13,12 +14,13 @@ if TYPE_CHECKING:
 class Wireless:
     BROADCAST_MAC = b'\xff\xff\xff\xff\xff\xff'
 
-    def __init__(self, sta, esp):
+    def __init__(self, sta, esp, timeout_ms=1000):
         self.sta = sta
         self.esp = esp
-        self.tx_power = 2  # unit: dBm, max is 20 dBm but that drains battery faster
+        self.timeout_ms = timeout_ms
+        self.tx_power = 6  # unit: dBm, max is 20 dBm but that drains battery faster
 
-        self.subscribers = {'adv': []}
+        self.subscribers = []
 
         # disable at start to save power
         self.is_active = True
@@ -48,57 +50,62 @@ class Wireless:
         gc.collect()
         log(f'Free memory before WiFi up: {gc.mem_free()} bytes')
         micropython.mem_info()
+        log('Bringing up WiFi...')
 
         self.sta.active(True)
         self.sta.config(txpower=self.tx_power)
         self.esp.active(True)
+        self.esp.config(timeout_ms=self.timeout_ms)
         self.is_active = True
+
+        log(f'WiFi up, MAC: {self.my_mac().hex()}, ID: {self.mac_to_usable(self.my_mac())}')
 
     def down(self):
         if not self.is_active:
             log('WARNING: Wireless down() called when already down', level='test')
+        log('Bringing down WiFi...')
         self.esp.active(False)
         self.sta.active(False)
         self.is_active = False
 
     def advertise(self):
+        self.send(self.BROADCAST_MAC, b'ADV', sync=False)
+
+    def send(self, mac, msg, sync=True) -> bool:
         if not self.is_active:
-            log('WARNING: Wireless advertise() called when wireless is down', level='test')
-            return
-        # add broadcast peer if not already present
+            raise RuntimeError('Wireless send_recv() called when wireless is down')
         try:
-            self.esp.get_peer(self.BROADCAST_MAC)
+            self.esp.get_peer(mac)
         except OSError as e:
             if e.args[1] == 'ESP_ERR_ESPNOW_NOT_FOUND':
-                self.esp.add_peer(self.BROADCAST_MAC)
+                log(f'Adding peer {mac.hex()}')
+                self.esp.add_peer(mac)
             else:
                 raise
-        self.esp.send(self.BROADCAST_MAC, b'ADV', False)
+        log(f'Sending message to {mac.hex()}: {msg}')
+        return self.esp.send(mac, msg, sync)
 
-    def subscribe(self, callback, events):
-        for event in events:
-            if event in self.subscribers:
-                self.subscribers[event].append(callback)
-            else:
-                raise ValueError(f"Unknown event type: {event}")
+    def subscribe(self, callback):
+        if callback in self.subscribers:
+            raise ValueError("Callback already subscribed")
+        else:
+            self.subscribers.append(callback)
 
-    def unsubscribe(self, callback, events):
-        for event in events:
-            if event in self.subscribers:
-                self.subscribers[event].remove(callback)
-            else:
-                raise ValueError(f"Unknown event type: {event}")
+    def unsubscribe(self, callback):
+        if callback in self.subscribers:
+            self.subscribers.remove(callback)
+        else:
+            raise ValueError("Callback not found in subscribers")
 
     async def run(self):
         while True:
             if self.is_active:
                 host, msg = await self.esp.airecv()
-                if msg == b'ADV':
-                    if host in self.esp.peers_table:
-                        rssi = self.esp.peers_table[host][0]
-                    else:
-                        rssi = -200
-                        log(f'Host {host} not in peers table', level='test')
-                    for callback in self.subscribers['adv']:
-                        callback('adv', {'mac': host, 'rssi': rssi})
+                if host in self.esp.peers_table:
+                    rssi = self.esp.peers_table[host][0]
+                else:
+                    rssi = -200
+                    log(f'Host {host} not in peers table', level='test')
+                for callback in self.subscribers:
+                    callback(msg, host, rssi)
             await asyncio.sleep_ms(10)

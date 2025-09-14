@@ -17,6 +17,25 @@ class BattleStats:
         self.thrusters = thrusters
         self.sensors = sensors
 
+    def serialize(self) -> bytes:
+        if not all(-(1<<31) <= stat < (1<<31) for stat in (self.weapons, self.shields, self.thrusters, self.sensors)):
+            raise ValueError('BattleStats values must be 32-bit signed integers')
+        # serialize as 4 bytes each, little-endian
+        data = bytearray(16)
+        for i, stat in enumerate((self.weapons, self.shields, self.thrusters, self.sensors)):
+            data[i*4:(i+1)*4] = stat.to_bytes(4, 'little', signed=True)
+        return bytes(data)
+
+    @staticmethod
+    def deserialize(data: bytes) -> 'BattleStats':
+        if len(data) != 16:
+            raise ValueError('Invalid data length for BattleStats deserialization')
+        stats = []
+        for i in range(4):
+            stat = int.from_bytes(data[i*4:(i+1)*4], 'little', signed=True)
+            stats.append(stat)
+        return BattleStats(*stats)
+
 
 def run_chase(attacker: BattleStats, defender: BattleStats) -> int:
     return attacker.sensors - defender.thrusters + random.randint(-10, 10)

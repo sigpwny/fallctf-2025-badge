@@ -47,4 +47,4 @@ class Buttons:
                 for callback in self.subscribers['b']:
                     callback('b', b_state == 0)
                 prev_b_state = b_state
-            await asyncio.sleep_ms(1)
+            await asyncio.sleep_ms(10)

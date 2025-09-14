@@ -1,7 +1,7 @@
 from view import BasicTextView
 from menu import ListMenu
-from debug_menu import DebugMenu
-from debug_wireless import WirelessDebug
+# from debug_menu import DebugMenu
+# from debug_wireless import WirelessDebug
 from battle_menu import HostBattleMenu, JoinBattleMenu
 from circling_ship import CirclingShip
 from layout import Style
@@ -28,8 +28,8 @@ class MainController:
                     (
                         "debug",
                         [
-                            ("peripheral debug", None, DebugMenu(self.device_io)),
-                            ("wireless debug", None, WirelessDebug(self.device_io)),
+                            # ("peripheral debug", None, DebugMenu(self.device_io)),
+                            # ("wireless debug", None, WirelessDebug(self.device_io)),
                         ],
                         None,
                     ),
