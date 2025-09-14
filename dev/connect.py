@@ -92,7 +92,13 @@ class ConnectMenu(Runnable):
                     from battle import BattleStats, BattleRunner
                     other_stats = BattleStats.deserialize(other_stats_data)
                     my_stats = self.device_io.ship_stats.get_battle_stats()
-                    self._battle = BattleRunner(self.device_io, my_stats, other_stats)
+                    if self._host_side is None:
+                        raise RuntimeError('Host side not set when starting battle')
+                    if self._host_side:
+                        ship1, ship2 = my_stats, other_stats
+                    else:
+                        ship1, ship2 = other_stats, my_stats
+                    self._battle = BattleRunner(self.device_io, ship1, ship2)
                     self._state = ConnectMenuState.BATTLE
                     self._cancel_menu_event.set() # end "Starting battle..." menu
                 except Exception as e:
@@ -201,7 +207,10 @@ class ConnectMenu(Runnable):
                 self._cancel_menu_event.clear()
                 await menu_with_text(
                     self.device_io,
-                    ['Connecting...'],
+                    [
+                        f'Your id: {Wireless.mac_to_usable(self.device_io.wireless.my_mac())}',
+                        'Connecting...'
+                    ],
                     [('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))],
                     cancel_event=self._cancel_menu_event
                 )
