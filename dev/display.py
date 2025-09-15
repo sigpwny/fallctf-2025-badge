@@ -87,6 +87,10 @@ class Display:
     def draw_text(self, x, y, text):
         self.display.text(text, x, y, 0xffff)
 
+    def draw_fullscreen_image(self, image_path):
+        with open(image_path, 'rb') as f:
+            f.readinto(self.display.buffer)
+
     def show(self):
         self.display.show()
 

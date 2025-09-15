@@ -153,6 +153,56 @@ class ListMenu(Runnable):
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
 
+class ImageMenu(Runnable):
+    def __init__(self, device_io: 'DeviceIO', image_paths, actions):
+        self.device_io = device_io
+        self.image_paths = image_paths
+        self.actions = actions
+        self.select_idx = 0
+        self.keep_running = True
+
+    def joystick_event(self, event_type, value):
+        if event_type == "up-down":
+            if value:
+                self.select_idx -= 1
+            else:
+                self.select_idx += 1
+            self.select_idx = self.select_idx % len(self.image_paths)
+            self.device_io.display.draw_fullscreen_image(self.image_paths[self.select_idx])
+            self.device_io.display.show()
+
+    def button_event(self, button, pressed):
+        if not pressed:
+            return
+        if button == 'a':
+            self.keep_running = False
+
+    async def run(self):
+        self.device_io.joystick.subscribe(self.joystick_event, events=["up-down"])
+        self.device_io.buttons.subscribe(self.button_event, events=["a"])
+
+        self.device_io.display.draw_fullscreen_image(self.image_paths[self.select_idx])
+        self.device_io.display.show()
+
+        while self.keep_running:
+            await asyncio.sleep_ms(10)
+
+        self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
+        self.device_io.buttons.unsubscribe(self.button_event, events=["a"])
+
+        action = self.actions[self.select_idx]
+        if action is not None:
+            if isinstance(action, Runnable):
+                await action.run()
+            elif callable(action):
+                result = action()
+                # await if it's a coroutine
+                if hasattr(result, '__await__'):
+                    await result
+            else:
+                raise ValueError("Action is neither Runnable nor callable")
+
+
 async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
     text_view = BasicTextView(device_io.display)
     for i, line in enumerate(text_list):

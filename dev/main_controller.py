@@ -1,5 +1,5 @@
 from view import BasicTextView
-from menu import ListMenu, menu_with_text
+from menu import ListMenu, ImageMenu, menu_with_text
 # from debug_menu import DebugMenu
 # from debug_wireless import WirelessDebug
 from circling_ship import CirclingShip
@@ -23,28 +23,42 @@ class MainController:
     async def run(self):
         log('MainController started')
         while True:
-            await ListMenu(
+            # await ListMenu(
+            #     self.device_io,
+            #     [
+            #         ("connect", None, ConnectMenu(self.device_io)),
+            #         ("upgrade", None, UpgradeMenu(self.device_io)),
+            #         (
+            #             "debug",
+            #             [
+            #                 # ("peripheral debug", None, DebugMenu(self.device_io)),
+            #                 # ("wireless debug", None, WirelessDebug(self.device_io)),
+            #             ],
+            #             None,
+            #         ),
+            #     ],
+            #     additional_views=[
+            #         (
+            #             CirclingShip(self.device_io.display, height=40),
+            #             Style(posType=0b01, x=0, y=5),
+            #         ),
+            #         (
+            #             ColorTest(self.device_io.display, height=20),
+            #             Style(posType=0b01, x=0, y=5),
+            #         )
+            #     ],
+            # ).run()
+
+            await ImageMenu(
                 self.device_io,
                 [
-                    ("connect", None, ConnectMenu(self.device_io)),
-                    ("upgrade", None, UpgradeMenu(self.device_io)),
-                    (
-                        "debug",
-                        [
-                            # ("peripheral debug", None, DebugMenu(self.device_io)),
-                            # ("wireless debug", None, WirelessDebug(self.device_io)),
-                        ],
-                        None,
-                    ),
+                    'assets/first_page_1.raw',
+                    'assets/first_page_2.raw',
+                    'assets/first_page_3.raw',
                 ],
-                additional_views=[
-                    (
-                        CirclingShip(self.device_io.display, height=40),
-                        Style(posType=0b01, x=0, y=5),
-                    ),
-                    (
-                        ColorTest(self.device_io.display, height=20),
-                        Style(posType=0b01, x=0, y=5),
-                    )
-                ],
+                [
+                    ConnectMenu(self.device_io),
+                    UpgradeMenu(self.device_io),
+                    None,
+                ]
             ).run()
