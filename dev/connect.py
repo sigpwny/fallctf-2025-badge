@@ -14,15 +14,19 @@ class ConnectMenuState:
     SCANNING            = 0
     CONFIRM             = 1
     HOST_CONN_REQ       = 2
-    READY_TO_BATTLE     = 3
+    READY_TO_GAME       = 3
     CLIENT_CONN_CONFIRM = 4
     GOBACK              = 5
     CONN_FAILED         = 6
     BATTLE              = 7
     DISCONNECT          = 8
+    START_AUTOBATTLE    = 9
+    GIVE_FLAGS    = 10
+    WAIT_FOR_FLAGS    = 11
 
 
 class ConnectMenu(Runnable):
+    RECENT_PEERS_LIMIT = 5
     RECENT_PEERS_TIMEOUT_MS = 2000
     PEERLIST_REFRESH_MS = 500
     MIN_RSSI = -70 # minimum RSSI to show peer
@@ -56,6 +60,9 @@ class ConnectMenu(Runnable):
             # sort by RSSI (higher is better)
             self._recent_peers.sort(reverse=True, key=lambda p: p[0])
 
+            # limit to RECENT_PEERS_LIMIT
+            self._recent_peers = self._recent_peers[:self.RECENT_PEERS_LIMIT]
+
             self._refresh_peerlist()
         elif msg == b'CONN_REQ' and self._state in [
                 ConnectMenuState.SCANNING,
@@ -66,45 +73,47 @@ class ConnectMenu(Runnable):
             self._peer = host
             self._state = ConnectMenuState.CLIENT_CONN_CONFIRM
             self._cancel_menu_event.set() # cancel current menu to show connection request
-            self._host_side = False
+            self._host_side = True # the one who accepts is the host
         elif host == self._peer:
             if msg == b'CONN_ACK' and self._state == ConnectMenuState.HOST_CONN_REQ:
                 log(f'Received CONN_ACK from {host.hex()}')
-                self._state = ConnectMenuState.READY_TO_BATTLE
+                self._state = ConnectMenuState.READY_TO_GAME
                 self._cancel_menu_event.set() # end "Connecting..." menu
-                self._host_side = True
-            elif msg == b'DISCONNECT' and self._state in [
-                    ConnectMenuState.READY_TO_BATTLE,
-                    ConnectMenuState.HOST_CONN_REQ,
-                    ConnectMenuState.CLIENT_CONN_CONFIRM
-                ]:
+                self._host_side = False # the one who accepts is the host
+            elif msg == b'DISCONNECT':
                 log(f'Received DISCONNECT from {host.hex()}')
                 self._state = ConnectMenuState.CONN_FAILED
                 self._cancel_menu_event.set() # end current menu
-            elif msg.startswith(b'BATTLE_INFO') and self._state == ConnectMenuState.READY_TO_BATTLE:
-                log(f'Received {msg} from {host.hex()}')
-                data = msg[len(b'BATTLE_INFO'):]
-                other_random_seed = int.from_bytes(data[0:4], 'little')
-                self._combined_random_seed = self._my_random_seed ^ other_random_seed
-                self._my_random_seed = None
-                other_stats_data = data[4:]
-                try:
-                    from battle import BattleStats, BattleRunner
-                    other_stats = BattleStats.deserialize(other_stats_data)
-                    my_stats = self.device_io.ship_stats.get_battle_stats()
-                    if self._host_side is None:
-                        raise RuntimeError('Host side not set when starting battle')
-                    if self._host_side:
-                        ship1, ship2 = my_stats, other_stats
-                    else:
-                        ship1, ship2 = other_stats, my_stats
-                    self._battle = BattleRunner(self.device_io, ship1, ship2)
-                    self._state = ConnectMenuState.BATTLE
-                    self._cancel_menu_event.set() # end "Starting battle..." menu
-                except Exception as e:
-                    log(f'Error deserializing other stats or starting battle: {e}', level='error')
-                    self._state = ConnectMenuState.CONN_FAILED
-                    self._cancel_menu_event.set()
+            elif self._state in [ConnectMenuState.READY_TO_GAME, ConnectMenuState.START_AUTOBATTLE] and msg.startswith(b'BATTLE_INFO'):
+                    log(f'Received {msg} from {host.hex()}')
+                    data = msg[len(b'BATTLE_INFO'):]
+                    other_random_seed = int.from_bytes(data[0:4], 'little')
+                    other_stats_data = data[4:]
+                    try:
+                        from battle import BattleStats, BattleRunner
+                        other_stats = BattleStats.deserialize(other_stats_data)
+                        my_stats = self.device_io.ship_stats.get_battle_stats()
+                        if self._host_side is None:
+                            raise RuntimeError('Host side not set when starting battle')
+                        if self._host_side:
+                            ship1, ship2 = my_stats, other_stats
+                            self._combined_random_seed = self._my_random_seed ^ other_random_seed
+                            self._my_random_seed = None
+                        else:
+                            stats = self.device_io.ship_stats.get_battle_stats().serialize()
+                            self._my_random_seed = random.getrandbits(32)
+                            random_seed = self._my_random_seed.to_bytes(4, 'little')
+                            self.device_io.wireless.send(self._peer, b'BATTLE_INFO' + random_seed + stats, sync=False)
+                            self._combined_random_seed = self._my_random_seed ^ other_random_seed
+                            self._my_random_seed = None
+                            ship1, ship2 = other_stats, my_stats
+                        self._battle = BattleRunner(self.device_io, ship1, ship2)
+                        self._state = ConnectMenuState.BATTLE
+                        self._cancel_menu_event.set()
+                    except Exception as e:
+                        log(f'Error deserializing other stats or starting battle: {e}', level='error')
+                        self._state = ConnectMenuState.CONN_FAILED
+                        self._cancel_menu_event.set()
             else:
                 log(f'ConnectMenu received unknown wireless msg from {host.hex()}: {msg}')
 
@@ -214,7 +223,32 @@ class ConnectMenu(Runnable):
                     [('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))],
                     cancel_event=self._cancel_menu_event
                 )
-            elif self._state == ConnectMenuState.READY_TO_BATTLE:
+            elif self._state == ConnectMenuState.READY_TO_GAME:
+                if self._host_side is None:
+                    log('ERROR: READY_TO_GAME state but _host_side is None', level='error')
+                    self._state = ConnectMenuState.CONN_FAILED
+                    continue
+                if self._host_side:
+                    self._cancel_menu_event.clear()
+                    await menu_with_text(
+                        self.device_io,
+                        ['Select an activity:'],
+                        [
+                            ('Auto Battle', None, self._state_change_func(ConnectMenuState.START_AUTOBATTLE)),
+                            ('Give flags', None, self._state_change_func(ConnectMenuState.GIVE_FLAGS)),
+                            ('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))
+                        ],
+                        cancel_event=self._cancel_menu_event
+                    )
+                else:
+                    self._cancel_menu_event.clear()
+                    await menu_with_text(
+                        self.device_io,
+                        ['Connected!', 'Waiting for host to start...'],
+                        [('Cancel', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))],
+                        cancel_event=self._cancel_menu_event
+                    )
+            elif self._state == ConnectMenuState.START_AUTOBATTLE:
                 stats = self.device_io.ship_stats.get_battle_stats().serialize()
                 self._my_random_seed = random.getrandbits(32)
                 random_seed = self._my_random_seed.to_bytes(4, 'little')
@@ -232,7 +266,7 @@ class ConnectMenu(Runnable):
                     self.device_io,
                     ['Connection request', f'from {Wireless.mac_to_usable(self._peer)}'],
                     [
-                        ('Accept', None, self._state_change_func(ConnectMenuState.READY_TO_BATTLE, send_msg=b'CONN_ACK')),
+                        ('Accept', None, self._state_change_func(ConnectMenuState.READY_TO_GAME, send_msg=b'CONN_ACK')),
                         ('Decline', None, self._state_change_func(ConnectMenuState.SCANNING, send_msg=b'DISCONNECT'))
                     ],
                     cancel_event=self._cancel_menu_event
@@ -253,6 +287,9 @@ class ConnectMenu(Runnable):
                     self._battle = None
                     self._host_side = None
                 self._state = ConnectMenuState.GOBACK
+            elif self._state == ConnectMenuState.GIVE_FLAGS:
+                # TODO
+                pass
             else:
                 await menu_with_text(
                     self.device_io,

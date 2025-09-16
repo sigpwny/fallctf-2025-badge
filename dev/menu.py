@@ -66,10 +66,6 @@ class ListMenu(Runnable):
             for v, s in additional_views:
                 self.view.append((v, s))
 
-        self.device_io.joystick.subscribe(self.joystick_event, events=["up-down"])
-        self.device_io.buttons.subscribe(self.button_event, events=["a", "b"])
-        self.view.first_render()
-
         self.keep_running = True
         self.item_selected = False
         self.last_select = init_selected + self.menu_start
@@ -124,6 +120,10 @@ class ListMenu(Runnable):
             self.keep_running = False
 
     async def run(self):
+        self.device_io.joystick.subscribe(self.joystick_event, events=["up-down"])
+        self.device_io.buttons.subscribe(self.button_event, events=["a", "b"])
+        self.view.first_render()
+
         while self.keep_running:
             if self.last_select != self.select_idx:
                 self.view[self.last_select][0].update(
@@ -147,8 +147,10 @@ class ListMenu(Runnable):
                     # await if it's a coroutine
                     if hasattr(result, '__await__'):
                         await result
+                elif hasattr(action, '__await__'):
+                    await action
                 else:
-                    raise ValueError("Action is neither Runnable nor callable")
+                    raise ValueError("Action is neither Runnable nor callable nor awaitable")
 
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
@@ -199,8 +201,10 @@ class ImageMenu(Runnable):
                 # await if it's a coroutine
                 if hasattr(result, '__await__'):
                     await result
+            elif hasattr(action, '__await__'):
+                await action
             else:
-                raise ValueError("Action is neither Runnable nor callable")
+                raise ValueError("Action is neither Runnable nor callable nor awaitable")
 
 
 async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
@@ -213,3 +217,15 @@ async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items
         prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
         cancel_event=cancel_event
     ).run()
+
+
+def menu_with_text_runnable(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
+    text_view = BasicTextView(device_io.display)
+    for i, line in enumerate(text_list):
+        text_view.update(i, line)
+    return ListMenu(
+        device_io,
+        menu_items,
+        prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
+        cancel_event=cancel_event
+    )

@@ -41,6 +41,7 @@ class Environment:
         from ship_stats import ShipStats
         from wireless import Wireless
         from speaker import Speaker
+        from settings import Persist
 
         joystick = Joystick()
         buttons = Buttons()
@@ -51,8 +52,9 @@ class Environment:
         if self.early_board_init is None:
             raise RuntimeError("wireless has not been initialized")
         wireless = Wireless(self.early_board_init.sta, self.early_board_init.esp)
-        speaker = Speaker()
-        device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats, wireless, speaker)
+        persist = Persist()
+        speaker = Speaker(persist)
+        device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats, wireless, speaker, persist)
         main_controller = MainController(device_io)
 
         speaker.success_sound()

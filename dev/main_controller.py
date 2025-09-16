@@ -1,13 +1,12 @@
 from view import BasicTextView
 from menu import ListMenu, ImageMenu, menu_with_text
-# from debug_menu import DebugMenu
-# from debug_wireless import WirelessDebug
 from circling_ship import CirclingShip
 from color_test import ColorTest
 from layout import Style
 import wireless
 from connect import ConnectMenu
 from upgrade import UpgradeMenu
+from settings import SettingsMenu
 
 from logger import log
 
@@ -23,32 +22,6 @@ class MainController:
     async def run(self):
         log('MainController started')
         while True:
-            # await ListMenu(
-            #     self.device_io,
-            #     [
-            #         ("connect", None, ConnectMenu(self.device_io)),
-            #         ("upgrade", None, UpgradeMenu(self.device_io)),
-            #         (
-            #             "debug",
-            #             [
-            #                 # ("peripheral debug", None, DebugMenu(self.device_io)),
-            #                 # ("wireless debug", None, WirelessDebug(self.device_io)),
-            #             ],
-            #             None,
-            #         ),
-            #     ],
-            #     additional_views=[
-            #         (
-            #             CirclingShip(self.device_io.display, height=40),
-            #             Style(posType=0b01, x=0, y=5),
-            #         ),
-            #         (
-            #             ColorTest(self.device_io.display, height=20),
-            #             Style(posType=0b01, x=0, y=5),
-            #         )
-            #     ],
-            # ).run()
-
             await ImageMenu(
                 self.device_io,
                 [
@@ -59,6 +32,6 @@ class MainController:
                 [
                     ConnectMenu(self.device_io),
                     UpgradeMenu(self.device_io),
-                    None,
+                    SettingsMenu(self.device_io),
                 ]
             ).run()

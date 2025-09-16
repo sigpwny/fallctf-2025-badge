@@ -29,11 +29,15 @@ class PWMSpeaker:
         
 
 class Speaker:
-    def __init__(self):
+    def __init__(self, persist):
         self.speaker = PWMSpeaker()
+        self.persist = persist
+        self.persist.register_boolean_setting('mute', False)
     
     def beep(self, frequency=1000, duration_ms=100):
         """Non-blocking version of beep that returns immediately"""
+        if self.persist.get_boolean('mute'):
+            return
         log(f"Beep (nowait): {frequency}Hz for {duration_ms}ms")
         self.speaker.play_tone(frequency)
         async def stop_later():
@@ -43,6 +47,8 @@ class Speaker:
     
     def success_sound(self):
         """Play a non-blocking success sound (ascending tones)"""
+        if self.persist.get_boolean('mute'):
+            return
         log("Playing success sound")
         frequencies = [1000, 1200, 1500]  # ascending frequencies
         duration_ms = 80  # duration for each tone

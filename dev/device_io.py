@@ -8,12 +8,13 @@ if TYPE_CHECKING:
     from power import PowerMonitor
     from wireless import Wireless
     from speaker import Speaker
+    from settings import Persist
 
 
 class DeviceIO:
     def __init__(self, joystick: 'Joystick', buttons: 'Buttons', accelerometer: 'Accelerometer', 
                  power: 'PowerMonitor', display: 'Display', ship_stats: 'ShipStats', 
-                 wireless: 'Wireless', speaker: 'Speaker'):
+                 wireless: 'Wireless', speaker: 'Speaker', persist: 'Persist'):
         self.joystick = joystick
         self.buttons = buttons
         self.display = display
@@ -22,3 +23,4 @@ class DeviceIO:
         self.power = power
         self.wireless = wireless
         self.speaker = speaker
+        self.persist = persist
