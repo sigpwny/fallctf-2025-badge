@@ -6,10 +6,14 @@ from flag_manager import FlagsMenu
 
 from logger import log
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from device_io import DeviceIO
+
 
 class Persist:
     def __init__(self):
-        self._nvs = esp32.NVS('fallctf_v1.0')
+        self._nvs = esp32.NVS("fallctf_v1.0")
         self.boolean_settings = []
 
     def get_i32(self, key: str) -> int | None:
@@ -59,7 +63,7 @@ class Persist:
             try:
                 length = self._nvs.get_blob(key, buf)
             except OSError as e:
-                if len(e.args) > 1 and e.args[1] == 'ESP_ERR_NVS_INVALID_LENGTH':
+                if len(e.args) > 1 and e.args[1] == "ESP_ERR_NVS_INVALID_LENGTH":
                     buf = bytearray(len(buf) * 2)
                 else:
                     return None
@@ -72,26 +76,33 @@ class SettingsMenu(Runnable):
     def __init__(self, device_io: "DeviceIO"):
         self.device_io = device_io
         self._go_back = False
+        self.device_io.buttons.subscribe(self.button_event, events=['b'])
+
+    def button_event(self, button, pressed):
+        if button == "b" and pressed:
+            self._go_back = True
 
     async def run(self):
         menu = None
         while not self._go_back:
             menu_options = [
-                ("back", None, lambda: setattr(self, '_go_back', True)),
+                ("back", None, lambda: setattr(self, "_go_back", True)),
                 ("Test speaker", None, lambda: self.device_io.speaker.success_sound()),
                 ("Flags", None, FlagsMenu(self.device_io)),
             ]
             for setting in self.device_io.persist.boolean_settings:
                 current_value = self.device_io.persist.get_boolean(setting)
-                menu_options.append((
-                    f"{setting}: {'ON' if current_value else 'OFF'}",
-                    None,
-                    lambda: self.device_io.persist.toggle_boolean(setting)
-                ))
+                menu_options.append(
+                    (
+                        f"{setting}: {'ON' if current_value else 'OFF'}",
+                        None,
+                        lambda: self.device_io.persist.toggle_boolean(setting),
+                    )
+                )
             menu = ListMenu(
                 self.device_io,
                 menu_options,
-                init_selected=0 if menu is None else menu.select_idx
+                init_selected=0 if menu is None else menu.select_idx,
             )
             await menu.run()
-
+        self.device_io.buttons.unsubscribe(self.button_event, events=['b'])

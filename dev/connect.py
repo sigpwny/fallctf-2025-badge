@@ -9,6 +9,9 @@ from wireless import Wireless
 
 from logger import log
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from device_io import DeviceIO
 
 class ConnectMenuState:
     SCANNING            = 0
@@ -42,6 +45,11 @@ class ConnectMenu(Runnable):
         self._my_random_seed = None
         self._combined_random_seed = 0
         self._host_side = None
+        self.device_io.buttons.subscribe(self.button_event, events=['b'])
+    
+    def button_event(self, button, pressed):
+        if button == "b" and pressed:
+            self._state = ConnectMenuState.GOBACK
 
     def _wireless_event(self, msg, host, rssi):
         # log(f'ConnectMenu received wireless event from {host.hex()}: {msg} (rssi={rssi}), state={self._state}')
@@ -160,6 +168,7 @@ class ConnectMenu(Runnable):
                 cancel_event=self._cancel_menu_event
             )
             await past_menu.run()
+        self.device_io.buttons.unsubscribe(self.button_event, events=['b'])
 
     async def _run_advertise(self):
         adv_interval_ms = 500
