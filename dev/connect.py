@@ -48,11 +48,6 @@ class ConnectMenu(Runnable):
         self._host_side = None
         self._got_flag = None
 
-    def _button_event(self, button, pressed):
-        if button == "b" and pressed and self._state == ConnectMenuState.SCANNING:
-            self._state = ConnectMenuState.GOBACK
-            self._cancel_menu_event.set()
-
     def _wireless_event(self, msg, host, rssi):
         # log(f'ConnectMenu received wireless event from {host.hex()}: {msg} (rssi={rssi}), state={self._state}')
 
@@ -158,7 +153,6 @@ class ConnectMenu(Runnable):
             log(f'WARNING: invalid condition to refresh peerlist (state={self._state})', level='test')
 
     async def _run_menu(self):
-        self.device_io.buttons.subscribe(self._button_event, events=['b'])
         past_menu = None
         while self._state == ConnectMenuState.SCANNING:
             items = [('Back', None, self._state_change_func(ConnectMenuState.GOBACK))]
@@ -178,10 +172,10 @@ class ConnectMenu(Runnable):
                 init_selected=min(past_menu.select_idx - past_menu.menu_start
                                   if past_menu else 0, max(len(items)-1, 0)),
                 prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
-                cancel_event=self._cancel_menu_event
+                cancel_event=self._cancel_menu_event,
+                exit_on_b_handler=lambda: self._state_change_func(ConnectMenuState.GOBACK)(),
             )
             await past_menu.run()
-        self.device_io.buttons.unsubscribe(self._button_event, events=['b'])
 
     async def _run_advertise(self):
         adv_interval_ms = 500

@@ -2,6 +2,7 @@ import asyncio
 
 from view import BasicTextView
 from layout import ComplexLayout, Style
+from logger import log
 
 
 TYPE_CHECKING = False
@@ -25,7 +26,8 @@ class ListMenu(Runnable):
         *,
         additional_views=None,
         prepended_views=None,
-        cancel_event=None
+        cancel_event=None,
+        exit_on_b_handler=None,
     ):
         self.device_io = device_io
         self.sub_idx_ranges = []
@@ -76,6 +78,7 @@ class ListMenu(Runnable):
         first_selected_view.update(0, ">" + first_selected_view.lines[0][1:])
 
         self.cancel_event = cancel_event
+        self.exit_on_b_handler = exit_on_b_handler
 
     def _wrap_select_idx(self):
         self.select_idx = (self.select_idx - self.menu_start) % (self.menu_end - self.menu_start) + self.menu_start
@@ -117,7 +120,9 @@ class ListMenu(Runnable):
                         self.view[i][1].hidden = True
                     self.select_idx = st - 1
                     return
-            self.keep_running = False
+            if self.exit_on_b_handler is not None:
+                self.keep_running = False
+                self.exit_on_b_handler()
 
     async def run(self):
         self.device_io.joystick.subscribe(self.joystick_event, events=["up-down"])
