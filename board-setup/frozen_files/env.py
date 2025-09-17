@@ -4,14 +4,12 @@ from logger import Logger, set_logger, log
 
 
 class Environment:
-    def __init__(self, mode='dev', boardless_mode=False):
+    def __init__(self, mode='dev'):
         assert mode in ['dev', 'test', 'prod'], "Mode must be 'dev', 'test', or 'prod'"
-        self.boardless_mode = boardless_mode
-        if not self.boardless_mode:
-            import early_board_init
-            self.early_board_init = early_board_init
-        else:
-            self.early_board_init = None
+
+        import early_board_init
+        self.early_board_init = early_board_init
+
         self.mode = mode
         set_logger(Logger(log_level=mode))
 
@@ -20,17 +18,10 @@ class Environment:
         asyncio.run(self._start())
 
     async def _start(self):
-        if self.boardless_mode:
-            from soft_display import SoftDisplay
-            display = SoftDisplay()
-        else:
-            from display import Display
-            if self.early_board_init is None:
-                raise RuntimeError("early_board_init is required for non-boardless mode")
-            display = Display(_buffer=self.early_board_init.display_buffer)
-            from boot_screen import boot_screen
-            # boot screen
-            boot_screen(display)
+        from display import Display
+        display = Display(_buffer=self.early_board_init.display_buffer)
+        from boot_screen import boot_screen
+        boot_screen(display)
 
         from joystick import Joystick
         from buttons import Buttons
