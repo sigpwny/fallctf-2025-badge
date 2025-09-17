@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 serial_port="$(ls -1 /dev/cu*usb* 2>/dev/null | head -n 1)"
-mpremote_connect="connect $serial_port"
+# mpremote_connect="connect $serial_port"
+PY_ONLY_FILES=( "main.py" "boot.py" )
 echo "Connecting to $serial_port"
 
 set -e
@@ -19,7 +20,11 @@ fi
 
 # transfer all python files not in MPY_CANDIDATES
 for f in *.py; do
-    echo "Compiling $f to ${f%.py}.mpy"
+    if [[ " ${PY_ONLY_FILES[*]} " =~ " $f " ]]; then
+        echo "Transferring $f"
+        mpremote $mpremote_connect cp "$f" :
+        continue
+    fi
     mpy-cross "$f"
     echo "Transferring ${f%.py}.mpy"
     mpremote $mpremote_connect cp "${f%.py}.mpy" :
