@@ -158,6 +158,7 @@ class ConnectMenu(Runnable):
             log(f'WARNING: invalid condition to refresh peerlist (state={self._state})', level='test')
 
     async def _run_menu(self):
+        self.device_io.buttons.subscribe(self._button_event, events=['b'])
         past_menu = None
         while self._state == ConnectMenuState.SCANNING:
             items = [('Back', None, self._state_change_func(ConnectMenuState.GOBACK))]
@@ -203,7 +204,6 @@ class ConnectMenu(Runnable):
 
     async def run(self):
         self.device_io.wireless.subscribe(self._wireless_event)
-        self.device_io.buttons.subscribe(self._button_event, events=['b'])
 
         while True:
             log(f'ConnectMenu state: {self._state}')
@@ -367,4 +367,3 @@ class ConnectMenu(Runnable):
             log('WARNING: Wireless was already down when exiting ConnectMenu', level='test')
 
         self.device_io.wireless.unsubscribe(self._wireless_event)
-        self.device_io.buttons.unsubscribe(self._button_event, events=['b'])

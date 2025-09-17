@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+mpremote cp main.py :
+
 mpremote mkdir :assets 2>/dev/null || true
 for f in assets/*; do
     # skip .png
