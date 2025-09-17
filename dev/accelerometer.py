@@ -75,6 +75,9 @@ class Accelerometer:
             return
 
         while True:
+            while len(self.subscribers['xyz']) == 0:
+                await asyncio.sleep_ms(200)
+
             x, y, z = self._read()
             for callback in self.subscribers['xyz']:
                 callback('xyz', {'x': x, 'y': y, 'z': z})

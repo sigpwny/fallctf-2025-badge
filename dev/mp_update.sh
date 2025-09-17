@@ -14,7 +14,5 @@ for f in *.py; do
         echo "Updating $f"
         mpy-cross "$f"
         mpremote cp "${f%.*}.mpy" :
-    else
-        echo "$f is up to date"
     fi
 done
