@@ -79,11 +79,14 @@ class ListMenu(Runnable):
 
         self.cancel_event = cancel_event
         self.exit_on_b_handler = exit_on_b_handler
+        self.controls_on = True
 
     def _wrap_select_idx(self):
         self.select_idx = (self.select_idx - self.menu_start) % (self.menu_end - self.menu_start) + self.menu_start
 
     def joystick_event(self, event_type, value):
+        if not self.controls_on:
+            return
         if event_type == "up-down":
             if value:
                 self.select_idx -= 1
@@ -93,7 +96,7 @@ class ListMenu(Runnable):
 
 
     def button_event(self, button, pressed):
-        if not pressed:
+        if not pressed or not self.controls_on:
             return
         if button == 'a':
             if self.actions[self.select_idx - self.menu_start] is not None:
@@ -145,6 +148,7 @@ class ListMenu(Runnable):
         if self.item_selected:
             action = self.actions[self.select_idx - self.menu_start]
             if action is not None:
+                self.controls_on = False
                 if isinstance(action, Runnable):
                     await action.run()
                 elif callable(action):
@@ -156,6 +160,7 @@ class ListMenu(Runnable):
                     await action
                 else:
                     raise ValueError("Action is neither Runnable nor callable nor awaitable")
+                self.controls_on = True
 
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
@@ -212,7 +217,7 @@ class ImageMenu(Runnable):
                 raise ValueError("Action is neither Runnable nor callable nor awaitable")
 
 
-async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
+async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None, exit_on_b_handler=None):
     text_view = BasicTextView(device_io.display)
     for i, line in enumerate(text_list):
         text_view.update(i, line)
@@ -220,7 +225,8 @@ async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items
         device_io,
         menu_items,
         prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
-        cancel_event=cancel_event
+        cancel_event=cancel_event,
+        exit_on_b_handler=exit_on_b_handler
     ).run()
 
 

@@ -14,7 +14,6 @@ class UpgradeMenu(Runnable):
     async def run(self):
         self.last_msg = ''
         self.keep_running = True
-        self.device_io.buttons.subscribe(self.button_event, events=['b'])
         self.prev_stats = (self.device_io.ship_stats.stardust, self.device_io.ship_stats.stats.copy())
         while self.keep_running:
             items: list[MenuItem] = []
@@ -23,12 +22,7 @@ class UpgradeMenu(Runnable):
                 items.append((f'{s}: {self.device_io.ship_stats.stats[s]}{faction_buff}', None, self.upgrade_stat(s)))
             items.append(('confirm', None, self.confirm))
             items.append(('cancel', None, self.cancel))
-            await menu_with_text(self.device_io, [f'StarDust: {self.device_io.ship_stats.stardust}', f'Cost: {self.device_io.ship_stats.cost_to_upgrade()}', self.last_msg], items)
-        self.device_io.buttons.unsubscribe(self.button_event, events=['b'])
-
-    def button_event(self, button, pressed):
-        if button == 'b' and pressed:
-            self.cancel()
+            await menu_with_text(self.device_io, [f'StarDust: {self.device_io.ship_stats.stardust}', f'Cost: {self.device_io.ship_stats.cost_to_upgrade()}', self.last_msg], items, exit_on_b_handler=self.cancel)
 
     def confirm(self):
         self.keep_running = False

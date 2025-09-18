@@ -3,6 +3,7 @@
 include("$(PORT_DIR)/boards/manifest.py")
 module("ST7735.py")
 module("accelerometer.py")
+module("asteroids_game.py")
 module("battle.py")
 module("battle_menu.py")
 module("boolpalette.py")

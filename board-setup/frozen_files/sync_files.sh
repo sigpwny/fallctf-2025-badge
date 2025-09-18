@@ -3,6 +3,7 @@
 files=(
     ST7735.py
     accelerometer.py
+    asteroids_game.py
     battle.py
     battle_menu.py
     boolpalette.py
