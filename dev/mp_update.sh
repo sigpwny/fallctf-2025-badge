@@ -9,6 +9,10 @@ for f in *.py; do
     if [[ "$f" == "main.py" ]]; then
         continue
     fi
+    # ignore scripting files
+    if [[ "$f" == "gen_raw.py" ]]; then
+        continue
+    fi
     # check if it's different from the frozen version
     if ! cmp -s "$f" "../board-setup/frozen_files/$f"; then
         echo "Updating $f"
