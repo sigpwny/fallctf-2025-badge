@@ -5,7 +5,6 @@ files=(
     accelerometer.py
     asteroids_game.py
     battle.py
-    battle_menu.py
     boolpalette.py
     boot_screen.py
     buttons.py
