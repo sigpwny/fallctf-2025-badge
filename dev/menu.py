@@ -212,7 +212,7 @@ class ImageMenu(Runnable):
                 raise ValueError("Action is neither Runnable nor callable nor awaitable")
 
 
-async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None):
+async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None, exit_on_b_handler=None):
     text_view = BasicTextView(device_io.display)
     for i, line in enumerate(text_list):
         text_view.update(i, line)
@@ -220,7 +220,8 @@ async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items
         device_io,
         menu_items,
         prepended_views=[(text_view, Style(posType=0b01, y=5))], # relative y with 5px top margin
-        cancel_event=cancel_event
+        cancel_event=cancel_event,
+        exit_on_b_handler=exit_on_b_handler
     ).run()
 
 
