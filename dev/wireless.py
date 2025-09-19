@@ -107,4 +107,4 @@ class Wireless:
                     log(f'Host {host} not in peers table', level='test')
                 for callback in self.subscribers:
                     callback(msg, host, rssi)
-            await asyncio.sleep_ms(10)
+            await asyncio.sleep_ms(1)

@@ -99,7 +99,7 @@ class Missile:
         if dist_sq < min_dist ** 2:
             self.exploded = time.ticks_ms()
             ship.damage += self.damage
-            log(f'Ship hit by missile! Health: {ship.health}')
+            log(f'Ship hit by missile! Health: {ship.max_health - ship.damage}')
 
 class Ship:
     MAX_SPEED = 2e-2
@@ -119,6 +119,16 @@ class Ship:
         self.max_health = init_health
         self.hitbox_radius = 6
         self.stardust = 0
+
+    def draw_other(self, display, view_transform):
+        x, y = view_transform(self.x, self.y)
+        display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
+        ship_tip = x + math.cos(self.vdir) * 6, y + math.sin(self.vdir) * 6
+        ship_left = x + math.cos(self.vdir + 2.5) * 6, y + math.sin(self.vdir + 2.5) * 6
+        ship_right = x + math.cos(self.vdir - 2.5) * 6, y + math.sin(self.vdir - 2.5) * 6
+        display.line(int(ship_tip[0]), int(ship_tip[1]), int(ship_left[0]), int(ship_left[1]), TFT.PURPLE)
+        display.line(int(ship_tip[0]), int(ship_tip[1]), int(ship_right[0]), int(ship_right[1]), TFT.PURPLE)
+        display.line(int(ship_left[0]), int(ship_left[1]), int(ship_right[0]), int(ship_right[1]), TFT.PURPLE)
 
     def draw(self, display):
         x, y = self.screen_x, self.screen_y
@@ -383,7 +393,7 @@ class GameServer:
                 self.running = False
                 # allow it to send the last update
             self.broadcast_update(BroadcastUpdate.SHIP_AND_MISSILE)
-            await asyncio.sleep_ms(50)
+            await asyncio.sleep_ms(100)
 
 
 class GameClient:
@@ -392,6 +402,7 @@ class GameClient:
         self.asteroids = []
         self.missiles = []
         self.my_ship = Ship(init_health=100 + ship_stats.stats['shields'] * 10)
+        self.other_ship = Ship()
         self.stars = []
         self.last_missile_launch = 0
         self.client_id = client_id
@@ -403,6 +414,7 @@ class GameClient:
         vel_change = joystick_y * JOYSTICK_VEL_SCALE * (1 + 0.2 * self.ship_stats.stats['thrusters'])
         rot_change = joystick_x * JOYSTICK_ROT_SCALE
         self.my_ship.update(vel_change, rot_change, dt)
+        self.other_ship.update(0, 0, dt)  # other ship is updated from server messages
 
         for missile in self.missiles:
             if missile.exploded is None:
@@ -467,6 +479,14 @@ class GameClient:
                     self.my_ship.cos_a = math.cos(-vdir - math.pi/2)
                     self.my_ship.sin_a = math.sin(-vdir - math.pi/2)
                     self.my_ship.damage = damage
+                else:
+                    self.other_ship.x = x
+                    self.other_ship.y = y
+                    self.other_ship.vel = vel
+                    self.other_ship.vdir = vdir
+                    self.other_ship.cos_a = math.cos(-vdir - math.pi/2)
+                    self.other_ship.sin_a = math.sin(-vdir - math.pi/2)
+                    self.other_ship.damage = damage
                 idx += 9
             while idx + 9 <= len(raw_data):
                 x = int.from_bytes(raw_data[idx:idx+2], 'little')
@@ -534,6 +554,9 @@ class GameClient:
         # NOTE: drawing these one by one is slow, consider batching
         for star in self.stars:
             star.draw(display.display, self.my_ship.apply_view_around_ship)
+
+        # other ship
+        self.other_ship.draw_other(display.display, self.my_ship.apply_view_around_ship)
 
         # ship
         self.my_ship.draw(display.display)
