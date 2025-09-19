@@ -197,7 +197,106 @@ class BitMapView(View):
 
     def render(self):
         super().render()
-        self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
+        if self.format == RGB565:
+            # # write into self.display.display.buffer directly
+            # for py in range(self.height):
+            #     for px in range(self.width):
+            #         pixel = self.bitmap.pixel(px, py)
+            #         self.display.display.pixel(self.x + px, self.y + py, pixel)
+            self.display.display.blit(self.bitmap, self.x, self.y, -1)
+        else:
+            self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
 
     def get_width_height(self):
         return self.width, self.height
+
+
+class PBar(View):
+    def __init__(
+        self,
+        display,
+        capacity,
+        initial_value=0,
+        # theme=0,
+        width=100,
+        height=10,
+        direction=0,  # 0: horizontal, 1: vertical
+        fg_color=None,
+    ):
+        # type: (Display, int, int, int, int, int, int|None) -> None
+        super().__init__(display)
+        self.capacity = capacity
+        self.value = initial_value
+        # self.theme = theme
+        self.width = width
+        self.height = height
+        self.fg_color = (
+            fg_color if fg_color is not None else self.display.display.tft.WHITE
+        )
+        self.shake_color = self.display.display.tft.RED
+        self.direction = direction
+        self.shake_notice = 0
+
+    def update(self, value):
+        self.value = value
+    
+    def set_color(self, color):
+        self.fg_color = color
+
+    def shake(self, color=None, time=5):
+        if color is not None:
+            self.shake_color = color
+        self.shake_notice = time
+
+    def get_width_height(self):
+        return self.width + len(str(self.value)) * self.display.char_width, self.height
+
+    def render_x_y(self, x, y):
+        self.x = x
+        self.y = y
+        self.render()
+
+    def render(self):
+        super().render()
+        # default theme like a health bar with border. If shake_notice > 0, draw a red border
+        if self.shake_notice > 0:
+            self.shake_notice -= 1
+            border_color = self.shake_color
+        else:
+            border_color = self.fg_color
+        self.display.display.rect(self.x, self.y, self.width, self.height, border_color)
+        if self.direction == 0:
+            fill_width = int(self.width * self.value / self.capacity)
+            self.display.display.fill_rect(
+                self.x + 1, self.y + 1, fill_width - 2, self.height - 2, self.fg_color
+            )
+            self.display.display.fill_rect(
+                self.x + 1 + fill_width,
+                self.y + 1,
+                self.width - 2 - fill_width,
+                self.height - 2,
+                self.display.display.tft.BLACK,
+            )
+        else:
+            fill_height = int(self.height * self.value / self.capacity)
+            self.display.display.fill_rect(
+                self.x + 1,
+                self.y + self.height - fill_height + 1,
+                self.width - 2,
+                fill_height - 2,
+                self.fg_color,
+            )
+            self.display.display.fill_rect(
+                self.x + 1,
+                self.y + 1,
+                self.width - 2,
+                self.height - 2 - fill_height,
+                self.display.display.tft.BLACK,
+            )
+        # draw number after whole bar in right
+        num_text = f"{self.value}"
+        self.display.draw_text(
+            self.x + self.width + 5,
+            self.y + (self.height - self.display.line_height) // 2,
+            num_text,
+        )
