@@ -198,11 +198,12 @@ class BitMapView(View):
     def render(self):
         super().render()
         if self.format == RGB565:
-            # write into self.display.display.buffer directly
-            for py in range(self.height):
-                for px in range(self.width):
-                    pixel = self.bitmap.pixel(px, py)
-                    self.display.display.pixel(self.x + px, self.y + py, pixel)
+            # # write into self.display.display.buffer directly
+            # for py in range(self.height):
+            #     for px in range(self.width):
+            #         pixel = self.bitmap.pixel(px, py)
+            #         self.display.display.pixel(self.x + px, self.y + py, pixel)
+            self.display.display.blit(self.bitmap, self.x, self.y, -1)
         else:
             self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
 
