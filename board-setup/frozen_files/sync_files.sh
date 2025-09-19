@@ -17,6 +17,7 @@ files=(
     env.py
     factions.py
     flag_manager.py
+    invaders_game.py
     joystick.py
     layout.py
     logger.py
