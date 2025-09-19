@@ -524,6 +524,7 @@ class AsteroidsGameClient(Runnable):
         self.joystick_y = 0
         self.last_update_time = time.ticks_ms()
         self.paused = False
+        self.game_over = False
 
     def wifi_recv_callback(self, msg):
         """
@@ -559,13 +560,22 @@ class AsteroidsGameClient(Runnable):
         elif button == 'b':
             self.paused = True
 
+    async def _end_game_screen(self):
+        await menu_with_text(
+            self.device_io,
+            ['Game Over', f'Stardust gained: {self.world.my_ship.stardust}'],
+            [
+                ('Done', None, lambda: None)
+            ]
+        )
+
     async def run(self):
         self.device_io.joystick.subscribe(self._joystick_event, events=['xy'])
         self.device_io.buttons.subscribe(self._button_event, events=['a', 'b'])
 
         start_time = time.ticks_ms()
         num_frames = 0
-        while True:
+        while not self.game_over:
             elapsed = time.ticks_diff(time.ticks_ms(), start_time)
             num_frames += 1
             fps = num_frames * 1000 / elapsed if elapsed > 0 else 0
@@ -575,15 +585,20 @@ class AsteroidsGameClient(Runnable):
 
             await asyncio.sleep_ms(1)
 
+            if self.world.my_ship.health <= 0:
+                self.game_over = True
+
             if self.paused:
                 await menu_with_text(
                     self.device_io,
                     ['Game Paused'],
                     [
                         ('Resume', None, lambda: setattr(self, 'paused', False)),
-                        ('End game', None, lambda: None)
+                        ('End game', None, lambda: setattr(self, 'game_over', True)),
                     ]
                 )
+
+        await self._end_game_screen()
 
         self.device_io.joystick.unsubscribe(self._joystick_event, events=['xy'])
         self.device_io.buttons.unsubscribe(self._button_event, events=['a', 'b'])
@@ -616,5 +631,6 @@ class AsteroidsGameServerAndClient(Runnable):
 
     async def run(self):
         server_task = asyncio.create_task(self.server.run())
-        client_task = asyncio.create_task(self.client.run())
-        await asyncio.gather(server_task, client_task)
+        await self.client.run()
+        self.server.running = False
+        await server_task

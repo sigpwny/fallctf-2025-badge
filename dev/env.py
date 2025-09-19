@@ -13,9 +13,24 @@ class Environment:
         self.mode = mode
         set_logger(Logger(log_level=mode))
 
+        self.device_io = None
+
     def run(self):
         log('Environment.run')
-        asyncio.run(self._start())
+        try:
+            asyncio.run(self._start())
+        except Exception as e:
+            if self.device_io is not None:
+                text = f"Fatal error: {e}"
+                log(text)
+                self.device_io.display.clear()
+                for i in range(0, len(text), 20):
+                    self.device_io.display.draw_text(0, i // 20 * 10, text[i:i+20])
+                self.device_io.display.show()
+                log('done displaying error')
+                while True:
+                    pass
+            raise e
 
     async def _start(self):
         from display import Display
@@ -49,6 +64,7 @@ class Environment:
         speaker = Speaker(persist)
         device_io = DeviceIO(joystick, buttons, accelerometer, power, display, ship_stats, wireless, speaker, persist)
         main_controller = MainController(device_io)
+        self.device_io = device_io
 
         speaker.success_sound()
         await asyncio.gather(
