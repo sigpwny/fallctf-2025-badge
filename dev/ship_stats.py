@@ -1,4 +1,5 @@
 import errno
+import math
 
 from logger import log
 from factions import FACTIONS, FACTION_UNDECIDED
@@ -100,8 +101,9 @@ class ShipStats:
         else:
             repeated_battles = self.battled[opp] = 0
 
-        for _ in range(repeated_battles):
-            stardust_received = (stardust_received + 9) // 10
+        # diminishing returns for repeated battles
+        if repeated_battles > 0:
+            stardust_received = int(stardust_received / (math.log(repeated_battles) + 3))
 
         self.stardust += stardust_received
         self.save()

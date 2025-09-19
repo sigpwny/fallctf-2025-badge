@@ -24,12 +24,15 @@ class Environment:
                 text = f"Fatal error: {e}"
                 log(text)
                 self.device_io.display.clear()
+                idx = 0
                 for i in range(0, len(text), 20):
                     self.device_io.display.draw_text(0, i // 20 * 10, text[i:i+20])
+                    idx += 1
+                idx += 1
+                self.device_io.display.draw_text(0, idx * 10, "Press back reset")
+                idx += 1
+                self.device_io.display.draw_text(0, idx * 10, "button to restart")
                 self.device_io.display.show()
-                log('done displaying error')
-                while True:
-                    pass
             raise e
 
     async def _start(self):
