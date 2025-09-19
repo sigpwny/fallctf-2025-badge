@@ -33,9 +33,10 @@ class Wireless:
         """
         # mac_as_hex_bytes = ''.join(f'{b:02x}' for b in mac)
         mac_hashed = hashlib.sha256(mac).digest()
-        mac_hashed_as_hex_bytes = ''.join(f'{b:02x}' for b in mac_hashed)[:5]
+        # mac_hashed_as_hex_bytes = ''.join(f'{b:02x}' for b in mac_hashed)[:5]
+        mac_hashed_as_digits = f"{int.from_bytes(mac_hashed, 'big') % 10000:04d}"
 
-        return mac_hashed_as_hex_bytes
+        return mac_hashed_as_digits
 
     def my_mac(self) -> bytes:
         return self.sta.config('mac')

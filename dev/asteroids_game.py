@@ -123,18 +123,18 @@ class Ship:
         self.stardust = 0
 
     def draw_other(self, display, view_transform):
-        x, y = view_transform(self.x, self.y)
-        display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
-        ship_tip = x + math.cos(self.vdir) * 6, y + math.sin(self.vdir) * 6
-        ship_left = x + math.cos(self.vdir + 2.5) * 6, y + math.sin(self.vdir + 2.5) * 6
-        ship_right = x + math.cos(self.vdir - 2.5) * 6, y + math.sin(self.vdir - 2.5) * 6
-        display.line(int(ship_tip[0]), int(ship_tip[1]), int(ship_left[0]), int(ship_left[1]), TFT.PURPLE)
-        display.line(int(ship_tip[0]), int(ship_tip[1]), int(ship_right[0]), int(ship_right[1]), TFT.PURPLE)
-        display.line(int(ship_left[0]), int(ship_left[1]), int(ship_right[0]), int(ship_right[1]), TFT.PURPLE)
+        # x, y = view_transform(self.x, self.y)
+        # display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
+
+        ship_tip = self.x + math.cos(self.vdir) * 6, self.y + math.sin(self.vdir) * 6
+        ship_left = self.x + math.cos(self.vdir + 2.5) * 6, self.y + math.sin(self.vdir + 2.5) * 6
+        ship_right = self.x + math.cos(self.vdir - 2.5) * 6, self.y + math.sin(self.vdir - 2.5) * 6
+        coords = array('h', view_transform(*ship_tip) + view_transform(*ship_left) + view_transform(*ship_right))
+        display.poly(0, 0, coords, TFT.PURPLE, True)
 
     def draw(self, display):
         x, y = self.screen_x, self.screen_y
-        display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
+        # display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
         arr = array('h', [0, -6, -3, 3, 3, 3])
         display.poly(x, y, arr, TFT.PURPLE, True)
 
