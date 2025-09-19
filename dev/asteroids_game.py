@@ -202,6 +202,7 @@ class BroadcastUpdate:
     SHIP_AND_MISSILE = 1
     INIT_STAR = 3
     REMOVE_STAR = 4
+    END_GAME = 5
 
 
 class ClientUpdate:
@@ -211,12 +212,15 @@ class ClientUpdate:
 
 class GameServer:
     NUM_SHIPS = 2
+    SERVER_UPDATE_INTERVAL_MS = 200
+
     def __init__(self, send_raw_msg_func=None):
         self.asteroids = []
         self.missiles = []
         self.ships = []
         self.stars = []
         self.last_update_time = time.ticks_ms()
+        self.last_update_from_client = [0] * self.NUM_SHIPS
         self.send_raw_msg_func = send_raw_msg_func
         self.running = True
         self.start_time = time.ticks_ms()
@@ -349,6 +353,10 @@ class GameServer:
         elif update_type == BroadcastUpdate.REMOVE_STAR:
             # this should be handled immediately when a star is collected
             pass
+        elif update_type == BroadcastUpdate.END_GAME:
+            msg = bytearray([BroadcastUpdate.END_GAME])
+            self.send_raw_msg(msg)
+            self.running = False
 
     def send_raw_msg(self, msg):
         if self.send_raw_msg_func is not None:
@@ -379,6 +387,7 @@ class GameServer:
                 self.fire_missile(ship_index=client_id, damage=damage)
             else:
                 raise RuntimeError(f'Unknown message type {msg_type} from client')
+            self.last_update_from_client[client_id] = time.ticks_ms()
             self.update_from_client()
         except IndexError:
             log(f'Malformed message from client: {raw_data.hex()}', level='prod')
@@ -411,10 +420,19 @@ class GameServer:
                 self.running = False
                 # allow it to send the last update
             self.broadcast_update(BroadcastUpdate.SHIP_AND_MISSILE)
-            await asyncio.sleep_ms(200)
+            await asyncio.sleep_ms(self.SERVER_UPDATE_INTERVAL_MS)
+
+            if any(
+                time.ticks_diff(time.ticks_ms(), t) > 1000
+                for t in self.last_update_from_client
+            ):
+                log('A client has not sent updates for 1 second, ending game', level='prod')
+                self.broadcast_update(BroadcastUpdate.END_GAME)
 
 
 class GameClient:
+    CLIENT_UPDATE_INTERVAL_MS = 200
+
     def __init__(self, client_id, ship_stats, singleplayer):
         self.ship_stats = ship_stats
         self.asteroids = []
@@ -450,7 +468,7 @@ class GameClient:
         self.missiles = [m for m in self.missiles if not m.ended]
 
         now = time.ticks_ms()
-        if time.ticks_diff(now, self.last_send_move_update) > 200:
+        if time.ticks_diff(now, self.last_send_move_update) > self.CLIENT_UPDATE_INTERVAL_MS:
             self.last_send_move_update = now
             msg = bytearray([self.client_id, ClientUpdate.MOVE])
             msg += struct.pack(
@@ -610,11 +628,13 @@ class AsteroidsGameClient(Runnable):
         self.last_update_time = time.ticks_ms()
         self.paused = False
         self.game_over = False
+        self.last_recv_time = time.ticks_ms()
 
     def wifi_recv_callback(self, msg):
         """
         Receive message from wifi and pass to client
         """
+        self.last_recv_time = time.ticks_ms()
         self.world.update_from_server(msg)
 
     def _update(self):
@@ -654,6 +674,9 @@ class AsteroidsGameClient(Runnable):
             ]
         )
 
+    def end_game(self):
+        self.game_over = True
+
     async def run(self):
         self.device_io.joystick.subscribe(self._joystick_event, events=['xy'])
         self.device_io.buttons.subscribe(self._button_event, events=['a', 'b'])
@@ -671,10 +694,15 @@ class AsteroidsGameClient(Runnable):
             await asyncio.sleep_ms(1)
 
             if self.world.my_ship.damage >= self.world.my_ship.max_health:
-                self.game_over = True
+                self.end_game()
 
             if self.world.remaining_time <= 0:
-                self.game_over = True
+                self.end_game()
+
+            # timeout if no messages received for a while
+            if time.ticks_diff(time.ticks_ms(), self.last_recv_time) > 1000:
+                log('No messages received from server for 1 second, ending game', level='prod')
+                self.end_game()
 
             if self.paused:
                 await menu_with_text(
@@ -682,7 +710,7 @@ class AsteroidsGameClient(Runnable):
                     ['Game Paused'],
                     [
                         ('Resume', None, lambda: setattr(self, 'paused', False)),
-                        ('End game', None, lambda: setattr(self, 'game_over', True)),
+                        ('End game', None, self.end_game),
                     ]
                 )
 
@@ -716,6 +744,10 @@ class AsteroidsGameServerAndClient(Runnable):
         Receive message from wifi and pass to server
         """
         self.server.raw_msg_from_client(msg)
+
+    def end_game(self):
+        self.client.end_game()
+        self.server.running = False
 
     async def run(self):
         server_task = asyncio.create_task(self.server.run())
