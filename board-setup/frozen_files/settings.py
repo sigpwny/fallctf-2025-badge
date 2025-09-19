@@ -3,6 +3,8 @@ import esp32
 from menu import Runnable, ListMenu
 from flag_manager import FlagsMenu
 
+from invaders_game import InvadersGame
+
 TYPE_CHECKING = False
 if TYPE_CHECKING:
     from device_io import DeviceIO
@@ -83,6 +85,7 @@ class SettingsMenu(Runnable):
                 ("Test speaker", None, lambda: self.device_io.speaker.success_sound()),
                 (f"Battery: {battery}%", None, lambda: None),
                 ("Flags", None, FlagsMenu(self.device_io)),
+                ('Space Invaders', None, InvadersGame(self.device_io)),
             ]
             for setting in self.device_io.persist.boolean_settings:
                 current_value = self.device_io.persist.get_boolean(setting)
