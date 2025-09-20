@@ -1,1 +1,2 @@
 esptool==5.0.2
+mpremote
