@@ -51,6 +51,7 @@ class SimpleLayout(Layout):
             )
         self.display.show()
 
+
 # no dataclass in micropython
 # @dataclass
 class Style:
@@ -63,6 +64,7 @@ class Style:
     hidden: bool = False
     draw_outline: bool = False
     outline_color: int | None = None
+    _changed = True
 
     def __init__(
         self,
@@ -80,26 +82,50 @@ class Style:
         self.draw_outline = draw_outline
         self.outline_color = outline_color
 
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+        if not self._changed:
+            self._changed = True
+
 
 class ComplexLayout(Layout):
-    def __init__(self, display, *views, x=0, y=0):
-        # type: (Display, *tuple[View, Style], int, int) -> None
+    _changed = True
+    _inited = False
+
+    def __init__(
+        self, display, *views, x=0, y=0, enable_render_cache=False, background_views=[]
+    ):
+        # type: (Display, *tuple[View, Style], int, int, bool, list[View]) -> None
+        """
+        Init a Complex Layout
+        @param display: Display to render to
+        @param *views: variable number of (View, Style) tuples
+        @param x: starting x position
+        @param y: starting y position
+        @param enable_render_cache: EXPERIMENTAL: enable render cache to don't render unchanged views
+        """
         super().__init__(display)
         self.views: list[tuple[View, Style]] = list(views)
         self.x = x
         self.y = y
+        self.enable_render_cache = enable_render_cache
+        self.background_views = background_views
 
     def __len__(self):
         return len(self.views)
 
     def first_render(self, *args, **kwargs):
-        for v, s in self.views:
-            if not s.hidden:
-                v.first_render(*args, **kwargs)
+        self.display.clear()
+        for v in self.background_views:
+            v.first_render(*args, **kwargs)
+            v.render_x_y(0, 0)
+        self.render()
 
     def __setitem__(self, index: int, view_style):
         # type: (int, tuple[View, Style]) -> None
         self.views[index] = view_style
+        # it's safe because it use setattr instead of setitem hooked here
+        self._changed = True
 
     def __getitem__(self, index: int):
         # type: (int) -> tuple[View, Style]
@@ -108,10 +134,18 @@ class ComplexLayout(Layout):
     def append(self, view_style):
         # type: (tuple[View, Style]) -> None
         self.views.append(view_style)
+        self._changed = True
 
     def render(self):
         super().render()
-        self.display.clear()
+        if not self._inited:
+            self._inited = True
+            self.first_render()
+            return
+        if not self.enable_render_cache:
+            self.display.clear()
+            for v in self.background_views:
+                v.render_x_y(0, 0)
         cur_x = self.x
         cur_y = self.y
         for v, s in self.views:
@@ -126,7 +160,11 @@ class ComplexLayout(Layout):
                     cur_x += s.x
                 else:
                     cur_x = self.x + s.x
-                v.render_x_y(cur_x, cur_y)
+                v.render_x_y_cache(
+                    cur_x,
+                    cur_y,
+                    enable_render_cache=self.enable_render_cache and not self._changed,
+                )
                 w, h = v.get_width_height()
                 if s.draw_outline:
                     self.display.display.rect(
@@ -139,4 +177,5 @@ class ComplexLayout(Layout):
                     )
                 cur_x += w
                 cur_y += h
+        self._changed = False
         self.display.show()

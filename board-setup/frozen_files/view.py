@@ -9,6 +9,10 @@ if TYPE_CHECKING:
 
 
 class View:
+    _changed = True
+    _cache_x_y = (0, 0)
+    _cache_w_h = (0, 0)
+
     def __init__(self, display):
         # type: (Display) -> None
         self.display = display
@@ -18,11 +22,34 @@ class View:
     def update(self, *data):
         pass
 
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        if not self._changed:
+            self._changed = True
+
     def render(self):
         pass
 
     def render_x_y(self, x, y):
         pass
+
+    def render_x_y_cache(self, x, y, enable_render_cache=False):
+        if not enable_render_cache:
+            self.render_x_y(x, y)
+        else:
+            if self._cache_x_y != (x, y) or self._changed:
+                # ensure expected black background
+                self.display.display.fill_rect(
+                    self._cache_x_y[0],
+                    self._cache_x_y[1],
+                    self._cache_w_h[0],
+                    self._cache_w_h[1],
+                    0,
+                )
+                self.render_x_y(x, y)
+                self._cache_x_y = (x, y)
+                self._cache_w_h = self.get_width_height()
+                self._changed = False
 
     def get_width_height(self) -> tuple[int, int]:
         return 0, 0
@@ -32,10 +59,15 @@ class View:
 
 
 class BasicTextView(View):
-    def __init__(self, display):
+    def __init__(self, display, shake_color=None):
         super().__init__(display)
         self.max_line = self.display.height // self.display.line_height
         self.lines = []
+        if shake_color is None:
+            self.shake_color = self.display.display.tft.RED
+        else:
+            self.shake_color = shake_color
+        self.shake_notice = 0
 
     def update(self, index, line):
         if 0 <= index < self.max_line:
@@ -45,7 +77,13 @@ class BasicTextView(View):
         else:
             raise IndexError("Line index out of range")
 
+    def shake(self, time=2, color=None):
+        self.shake_notice = time
+        if color is not None:
+            self.shake_color = color
+
     def first_render(self):
+        super().first_render()
         self.render(refresh_all=True)
 
     def render(self, refresh_all=False):
@@ -55,8 +93,15 @@ class BasicTextView(View):
 
     def render_x_y(self, x, y):
         super().render()
+        if self.shake_notice > 0:
+            self.shake_notice -= 1
+            # hacky way to make sure it continue rendering for next tick
+            self._changed = True
+            color = self.shake_color
+        else:
+            color = 0xFFFF
         for i, line in enumerate(self.lines):
-            self.display.draw_text(x, y + i * self.display.line_height, line)
+            self.display.draw_text(x, y + i * self.display.line_height, line, color)
 
     def get_width_height(self):
         return (
@@ -211,6 +256,45 @@ class BitMapView(View):
         return self.width, self.height
 
 
+class UnboxedLine(View):
+    x1 = 0
+    y1 = 0
+    x2 = 0
+    y2 = 0
+
+    def __init__(self, display, x1, y1, x2, y2, color=None):
+        # type: (Display, int, int, int, int, int|None) -> None
+        super().__init__(display)
+        self._x1 = x1
+        self._y1 = y1
+        self._x2 = x2
+        self._y2 = y2
+        self.color = color if color is not None else self.display.display.tft.WHITE
+
+    def update(self, x1, y1, x2, y2):
+        self._x1 = x1
+        self._y1 = y1
+        self._x2 = x2
+        self._y2 = y2
+
+    def setColor(self, color):
+        self.color = color
+
+    def render_x_y(self, x, y):
+        self.x1 = self._x1 + x
+        self.y1 = self._y1 + y
+        self.x2 = self._x2 + x
+        self.y2 = self._y2 + y
+        self.render()
+
+    def render(self):
+        super().render()
+        self.display.display.line(self.x1, self.y1, self.x2, self.y2, self.color)
+
+    def get_width_height(self):
+        return 0, 0
+
+
 class PBar(View):
     def __init__(
         self,
@@ -222,10 +306,13 @@ class PBar(View):
         height=10,
         direction=0,  # 0: horizontal, 1: vertical
         fg_color=None,
+        text_mode=0,  # 0: no text, 1: value, 2: changes from initial value
     ):
-        # type: (Display, int, int, int, int, int, int|None) -> None
+        # type: (Display, int, int, int, int, int, int|None, int) -> None
         super().__init__(display)
         self.capacity = capacity
+        if text_mode == 2:
+            self.i_val = initial_value
         self.value = initial_value
         # self.theme = theme
         self.width = width
@@ -236,14 +323,22 @@ class PBar(View):
         self.shake_color = self.display.display.tft.RED
         self.direction = direction
         self.shake_notice = 0
+        self.text_mode = text_mode
+        self.text = ""
+        if self.text_mode == 1:
+            self.text = f"{self.value}"
+        elif self.text_mode == 2:
+            self.text = f"+0"
 
-    def update(self, value):
+    def update(self, value, initial_value=None):
+        if initial_value is not None and self.text_mode == 2:
+            self.i_val = initial_value
         if 0 <= value <= self.capacity:
             self.value = value
             return 0
         else:
             return -1
-    
+
     def set_color(self, color):
         self.fg_color = color
 
@@ -253,7 +348,10 @@ class PBar(View):
         self.shake_notice = time
 
     def get_width_height(self):
-        return self.width + len(str(self.value)) * self.display.char_width, self.height
+        return (
+            self.width + len(self.text) * self.display.char_width + 5 + 1,
+            self.height,
+        )
 
     def render_x_y(self, x, y):
         self.x = x
@@ -266,6 +364,8 @@ class PBar(View):
         if self.shake_notice > 0:
             self.shake_notice -= 1
             border_color = self.shake_color
+            # hacky way to make sure it continue rendering for next tick
+            self._changed = True
         else:
             border_color = self.fg_color
         self.display.display.rect(self.x, self.y, self.width, self.height, border_color)
@@ -298,9 +398,12 @@ class PBar(View):
                 self.display.display.tft.BLACK,
             )
         # draw number after whole bar in right
-        num_text = f"{self.value}"
+        if self.text_mode == 1:
+            self.text = f"{self.value}"
+        elif self.text_mode == 2:
+            self.text = f"{self.value - self.i_val:+d}"
         self.display.draw_text(
             self.x + self.width + 5,
             self.y + (self.height - self.display.line_height) // 2,
-            num_text,
+            self.text,
         )

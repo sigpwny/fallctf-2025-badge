@@ -28,13 +28,14 @@ class ListMenu(Runnable):
         prepended_views=None,
         cancel_event=None,
         exit_on_b_handler=None,
+        enable_render_cache=False,
     ):
         self.device_io = device_io
         self.sub_idx_ranges = []
         # cannot have 0 items
         items = items or [("no items", None, None)]
         self.actions: list[Callable[[], Runnable] | None] = []
-        self.view = ComplexLayout(device_io.display)
+        self.view = ComplexLayout(device_io.display, enable_render_cache=enable_render_cache)
         if prepended_views is not None:
             for v, s in prepended_views:
                 self.view.append((v, s))
