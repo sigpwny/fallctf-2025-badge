@@ -213,7 +213,6 @@ class UpgradeMenu(Runnable):
         text_updater(0)
 
         prev_val = 0
-        pts_delta_sum_delta = 0
 
         while self.keep_running:
             curr_select = self.select_left + 2 * self.select_bottom
@@ -233,14 +232,21 @@ class UpgradeMenu(Runnable):
                 self.delta = 0
                 if not self.device_io.ship_stats.upgrade(
                     CATEGORIES[self.select_left + 2 * self.select_bottom],
-                    pts_delta=pts_delta_sum_delta,
+                    pts_delta=curr.value - prev_val,
                 ):
                     l[0][0].shake()
                     self.state = ADJUSTING
                 else:
-                    text_updater(pts_delta_sum_delta)
-                    l[value_text_idx[curr_select]][0].update(0, str(self.device_io.ship_stats.faction.boosts[CATEGORIES[curr_select]] + curr.value))
-                    pts_delta_sum_delta = 0
+                    text_updater(0)
+                    l[value_text_idx[curr_select]][0].update(
+                        0,
+                        str(
+                            self.device_io.ship_stats.faction.boosts[
+                                CATEGORIES[curr_select]
+                            ]
+                            + curr.value
+                        ),
+                    )
                     curr.update(curr.value, initial_value=curr.value)
                     curr.set_color(self.device_io.display.display.tft.YELLOW)
                     self.prev_select = self.select_left + 2 * self.select_bottom
@@ -252,7 +258,6 @@ class UpgradeMenu(Runnable):
             elif self.state == CANCELLING:
                 self.delta = 0
                 text_updater(0)
-                pts_delta_sum_delta = 0
                 curr.update(prev_val)
                 curr.set_color(self.device_io.display.display.tft.YELLOW)
                 self.prev_select = self.select_left + 2 * self.select_bottom
@@ -261,8 +266,7 @@ class UpgradeMenu(Runnable):
                 if curr.update(curr.value + self.delta) != 0:
                     curr.shake()
                 else:
-                    pts_delta_sum_delta += self.delta
-                    text_updater(pts_delta_sum_delta)
+                    text_updater(curr.value - prev_val)
             l.render()
             await asyncio.sleep(0.1)
 
