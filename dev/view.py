@@ -222,10 +222,13 @@ class PBar(View):
         height=10,
         direction=0,  # 0: horizontal, 1: vertical
         fg_color=None,
+        text_mode=0,  # 0: no text, 1: value, 2: changes from initial value
     ):
-        # type: (Display, int, int, int, int, int, int|None) -> None
+        # type: (Display, int, int, int, int, int, int|None, int) -> None
         super().__init__(display)
         self.capacity = capacity
+        if text_mode == 2:
+            self.i_val = initial_value
         self.value = initial_value
         # self.theme = theme
         self.width = width
@@ -236,6 +239,12 @@ class PBar(View):
         self.shake_color = self.display.display.tft.RED
         self.direction = direction
         self.shake_notice = 0
+        self.text_mode = text_mode
+        self.text = ""
+        if self.text_mode == 1:
+            self.text = f"{self.value}"
+        elif self.text_mode == 2:
+            self.text = f"+0"
 
     def update(self, value):
         if 0 <= value <= self.capacity:
@@ -243,7 +252,7 @@ class PBar(View):
             return 0
         else:
             return -1
-    
+
     def set_color(self, color):
         self.fg_color = color
 
@@ -253,7 +262,7 @@ class PBar(View):
         self.shake_notice = time
 
     def get_width_height(self):
-        return self.width + len(str(self.value)) * self.display.char_width, self.height
+        return self.width + len(self.text) * self.display.char_width, self.height
 
     def render_x_y(self, x, y):
         self.x = x
@@ -298,9 +307,12 @@ class PBar(View):
                 self.display.display.tft.BLACK,
             )
         # draw number after whole bar in right
-        num_text = f"{self.value}"
+        if self.text_mode == 1:
+            self.text = f"{self.value}"
+        elif self.text_mode == 2:
+            self.text = f"{self.value - self.i_val:+d}"
         self.display.draw_text(
             self.x + self.width + 5,
             self.y + (self.height - self.display.line_height) // 2,
-            num_text,
+            self.text,
         )
