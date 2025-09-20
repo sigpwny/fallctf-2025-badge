@@ -33,12 +33,13 @@ class Speaker:
         self.speaker = PWMSpeaker()
         self.persist = persist
         self.persist.register_boolean_setting('mute', False)
+        self.sound_playing = False
     
     def beep(self, frequency=1000, duration_ms=100):
         """Non-blocking version of beep that returns immediately"""
         if self.persist.get_boolean('mute'):
             return
-        if self.speaker.is_playing:
+        if self.speaker.is_playing or self.sound_playing:
             return
         log(f"Beep (nowait): {frequency}Hz for {duration_ms}ms")
         self.speaker.play_tone(frequency)
@@ -51,8 +52,9 @@ class Speaker:
         """Play a non-blocking success sound (ascending tones)"""
         if self.persist.get_boolean('mute'):
             return
-        if self.speaker.is_playing:
+        if self.speaker.is_playing or self.sound_playing:
             return
+        self.sound_playing = True
         log("Playing success sound")
         frequencies = [1000, 1200, 1500]  # ascending frequencies
         duration_ms = 80  # duration for each tone
@@ -65,6 +67,7 @@ class Speaker:
                 self.speaker.play_tone(freq)
                 await asyncio.sleep_ms(duration_ms)
                 self.speaker.stop()
+            self.sound_playing = False
         
         asyncio.create_task(play_sequence())
     

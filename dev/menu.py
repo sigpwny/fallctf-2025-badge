@@ -1,5 +1,7 @@
 import asyncio
+import framebuf
 
+from microfont import MicroFont
 from view import BasicTextView
 from layout import ComplexLayout, Style
 from logger import log
@@ -166,23 +168,35 @@ class ListMenu(Runnable):
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
 
-class ImageMenu(Runnable):
-    def __init__(self, device_io: 'DeviceIO', image_paths, actions):
+class HomeMenu(Runnable):
+    NUM_ITEMS = 4
+    MAX_IMAGES_SIZE = 40 * 27 * 2  # width * height * bytes_per_pixel (RGB565)
+
+    def __init__(self, device_io: 'DeviceIO', actions):
         self.device_io = device_io
-        self.image_paths = image_paths
+        if len(actions) != self.NUM_ITEMS:
+            raise ValueError(f"actions must have exactly {self.NUM_ITEMS} items")
         self.actions = actions
         self.select_idx = 0
+        self.last_select_idx = 0
         self.keep_running = True
+        self.labels = ['CONNECT', 'UPGRADE', 'MORE', 'SETTINGS']
+        planets = ['sun', 'earth', 'moon', 'uranus']
+        self.big_planet_paths = [f'assets/{p}_big.raw' for p in planets]
+        self.small_planet_paths = [f'assets/{p}_small.raw' for p in planets]
+
+        self.small_font = MicroFont('assets/comic_sans:B:14.mfnt', cache_index=True, cache_chars=True)
+        self.large_font = MicroFont('assets/comic_sans:B:16.mfnt', cache_index=True, cache_chars=True)
 
     def joystick_event(self, event_type, value):
         if event_type == "up-down":
+            self.last_select_idx = self.select_idx
             if value:
                 self.select_idx -= 1
             else:
                 self.select_idx += 1
-            self.select_idx = self.select_idx % len(self.image_paths)
-            self.device_io.display.draw_fullscreen_image(self.image_paths[self.select_idx])
-            self.device_io.display.show()
+            self.select_idx = self.select_idx % self.NUM_ITEMS
+            self.draw()
 
     def button_event(self, button, pressed):
         if not pressed:
@@ -190,15 +204,101 @@ class ImageMenu(Runnable):
         if button == 'a':
             self.keep_running = False
 
+    def draw_text(self, x, y, text, large_font=False):
+        font = self.large_font if large_font else self.small_font
+        font.write(
+            text,
+            self.device_io.display.display.buffer,
+            framebuf.RGB565,
+            self.device_io.display.display.width,
+            self.device_io.display.display.height,
+            x,
+            y,
+            self.device_io.display.display.tft.WHITE,
+            y_spacing=0,
+            x_spacing=0,
+        )
+
+    def draw_initial(self):
+        global global_buffer
+
+        self.device_io.display.clear()
+        for i in range(self.NUM_ITEMS):
+            if i == self.select_idx:
+                path = self.big_planet_paths[i]
+                if 'uranus' in path:
+                    width, height = 40, 27
+                else:
+                    width, height = 27, 27
+            else:
+                path = self.small_planet_paths[i]
+                if 'uranus' in path:
+                    width, height = 28, 17
+                else:
+                    width, height = 17, 17
+            x = (27 - width) // 2 + 15
+            y = 5 + i * 30 + (27 - height) // 2
+            with open(path, 'rb') as f:
+                length = f.readinto(global_buffer)
+                bitmap = (global_buffer, width, height, framebuf.RGB565)
+                self.device_io.display.display.blit(bitmap, x, y, 0)
+
+        for i in range(self.NUM_ITEMS):
+            self.draw_text(50, 12 + i * 30, self.labels[i], large_font=(i == self.select_idx))
+        self.device_io.display.show()
+
+    def draw(self):
+        global global_buffer
+
+        # draw new big planet
+        path = self.big_planet_paths[self.select_idx]
+        if 'uranus' in path:
+            width, height = 40, 27
+        else:
+            width, height = 27, 27
+        x = (27 - width) // 2 + 15
+        y = 5 + self.select_idx * 30 + (27 - height) // 2
+        self.device_io.display.display.rect(x, y, width, height, 0, True)
+        with open(path, 'rb') as f:
+            length = f.readinto(global_buffer)
+            bitmap = (global_buffer, width, height, framebuf.RGB565)
+            self.device_io.display.display.blit(bitmap, x, y, 0)
+
+        # draw new big text
+        self.device_io.display.display.rect(50, 12 + self.select_idx * 30, 100, 30, 0, True)
+        self.draw_text(50, 12 + self.select_idx * 30, self.labels[self.select_idx], large_font=True)
+
+        # draw small planet
+        path = self.small_planet_paths[self.last_select_idx]
+        if 'uranus' in path:
+            width, height = 28, 17
+        else:
+            width, height = 17, 17
+        x = (27 - 40) // 2 + 15
+        y = 5 + self.last_select_idx * 30 + (27 - 27) // 2
+        self.device_io.display.display.rect(x, y, 40, 27, 0, True)
+        x = (27 - width) // 2 + 15
+        y = 5 + self.last_select_idx * 30 + (27 - height) // 2
+        with open(path, 'rb') as f:
+            length = f.readinto(global_buffer)
+            bitmap = (global_buffer, width, height, framebuf.RGB565)
+            self.device_io.display.display.blit(bitmap, x, y, 0)
+
+        # draw new big text
+        self.device_io.display.display.rect(50, 12 + self.last_select_idx * 30, 100, 30, 0, True)
+        self.draw_text(50, 12 + self.last_select_idx * 30, self.labels[self.last_select_idx], large_font=False)
+
+        self.device_io.display.show()
+
+
     async def run(self):
         self.device_io.joystick.subscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.subscribe(self.button_event, events=["a"])
 
-        self.device_io.display.draw_fullscreen_image(self.image_paths[self.select_idx])
-        self.device_io.display.show()
+        self.draw_initial()
 
         while self.keep_running:
-            await asyncio.sleep_ms(10)
+            await asyncio.sleep_ms(100)
 
         self.device_io.joystick.unsubscribe(self.joystick_event, events=["up-down"])
         self.device_io.buttons.unsubscribe(self.button_event, events=["a"])
@@ -216,6 +316,9 @@ class ImageMenu(Runnable):
                 await action
             else:
                 raise ValueError("Action is neither Runnable nor callable nor awaitable")
+
+
+global_buffer = bytearray(HomeMenu.MAX_IMAGES_SIZE)
 
 
 async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None, exit_on_b_handler=None):

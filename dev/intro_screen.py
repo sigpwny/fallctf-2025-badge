@@ -41,10 +41,6 @@ class IntroScreen(Runnable):
 
         self.view = BasicTextView(device_io.display)
         self.layout = SimpleLayout(device_io.display, self.view)
-        self.display_lines()
-
-        self.device_io.buttons.subscribe(self.button_event, events=['a'])
-        self.device_io.joystick.subscribe(self.joystick_event, events=['xy'])
 
     def button_event(self, button, pressed):
         if button == 'a' and pressed and self.scroll == len(LINES) - self.view.max_line:
@@ -67,6 +63,11 @@ class IntroScreen(Runnable):
             i += 1
 
     async def run(self):
+        self.display_lines()
+
+        self.device_io.buttons.subscribe(self.button_event, events=['a'])
+        self.device_io.joystick.subscribe(self.joystick_event, events=['xy'])
+
         while self.keep_running:
             self.scroll = max(0, min(len(LINES) - self.view.max_line, self.scroll + self.scroll_dir))
             self.display_lines()
