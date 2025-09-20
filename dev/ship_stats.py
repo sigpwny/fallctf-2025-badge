@@ -109,6 +109,10 @@ class ShipStats:
         self.save()
         return stardust_received
 
+    def add_stardust(self, amount: int) -> None:
+        self.stardust += amount
+        self.save()
+
     def upgrade(self, stat: str) -> bool:
         if self.stardust >= self.cost_to_upgrade():
             self.stardust -= self.cost_to_upgrade()

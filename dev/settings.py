@@ -83,7 +83,7 @@ class SettingsMenu(Runnable):
             battery = self.device_io.power.get_battery_percentage()
             menu_options = [
                 ("back", None, lambda: setattr(self, "_go_back", True)),
-                ("Singleplayer", None, AsteroidsGameServerAndClient(self.device_io, 0, lambda _: None, singleplayer=True)),
+                ("Free play", None, AsteroidsGameServerAndClient(self.device_io, 0, lambda _: None, freeplay=True)),
                 ("Test speaker", None, lambda: self.device_io.speaker.success_sound()),
                 (f"Battery: {battery}%", None, lambda: None),
                 ("Flags", None, FlagsMenu(self.device_io)),

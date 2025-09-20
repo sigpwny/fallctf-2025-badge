@@ -47,6 +47,7 @@ class Wireless:
     def up(self):
         if self.is_active:
             log('WARNING: Wireless up() called when already up', level='test')
+            return
 
         gc.collect()
         log(f'Free memory before WiFi up: {gc.mem_free()} bytes')
@@ -64,6 +65,7 @@ class Wireless:
     def down(self):
         if not self.is_active:
             log('WARNING: Wireless down() called when already down', level='test')
+            return
         log('Bringing down WiFi...')
         self.is_active = False
         self.esp.active(False)
