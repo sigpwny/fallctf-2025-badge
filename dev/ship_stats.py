@@ -24,6 +24,8 @@ class ShipStats:
 
         self.battled: dict[bytes, int] = {}
 
+        self.show_intro = 1
+
     def load_file(self, filename: str) -> None:
         log(f'loading {filename}', level='prod')
 
@@ -41,7 +43,7 @@ class ShipStats:
             raise Exception(
                 f'Loading file {filename} checksum failed. Possibly corrupted or modified save file.')
 
-        self.stardust, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'] = data
+        self.stardust, faction_idx, self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'], self.show_intro = data
         self.faction = FACTIONS[faction_idx]
 
 
@@ -50,7 +52,7 @@ class ShipStats:
 
         faction_idx = FACTIONS.index(self.faction)
         data = [self.stardust, faction_idx,
-                self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors']]
+                self.stats['weapons'], self.stats['shields'], self.stats['thrusters'], self.stats['sensors'], self.show_intro]
 
         chk = checksum(data)
         with open(filename, 'w') as f:
