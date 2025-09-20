@@ -34,23 +34,12 @@ class UpgradeMenu(Runnable):
     def joystick_event(self, event_type, value):
         if self.state == SELECTING:
             if event_type == "up-down":
-                if value:
-                    self.select_bottom = False
-                else:
-                    self.select_bottom = True
-            elif event_type == "left-right":
-                if value:
-                    self.select_left = True
-                else:
-                    self.select_left = False
-        else:
-            if event_type == "left-right":
-                if value:
-                    self.delta = 1
-                else:
-                    self.delta = -1
+                self.select_bottom = not value
             else:
-                self.delta = 0
+                # left-right
+                self.select_left = value
+        else:
+            self.delta = (value * 2 - 1) if event_type == "left-right" else 0
 
     def button_event(self, button, pressed):
         if not pressed:
