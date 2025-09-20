@@ -26,6 +26,8 @@ class MainController:
         self.device_io.ship_stats.show_intro = 0
         self.device_io.ship_stats.save()
 
+        print('fallctf{s1gpwny_m4k3s_h4rdwar3!}')
+
         log('MainController main loop')
         while True:
             await HomeMenu(
