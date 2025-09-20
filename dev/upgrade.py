@@ -94,7 +94,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    100,
+                    99,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[0]],
                     width=30,
                     text_mode=2,
@@ -104,7 +104,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    100,
+                    99,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[1]],
                     width=30,
                     text_mode=2,
@@ -118,7 +118,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    100,
+                    99,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[2]],
                     width=30,
                     text_mode=2,
@@ -128,13 +128,14 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    100,
+                    99,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[3]],
                     width=30,
                     text_mode=2,
                 ),
                 Style(posType=0b11, x=40),
             ),
+            enable_render_cache=True,
         )
 
         def text_updater():

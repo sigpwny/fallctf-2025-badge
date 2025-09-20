@@ -9,6 +9,10 @@ if TYPE_CHECKING:
 
 
 class View:
+    _changed = True
+    _cache_x_y = (0, 0)
+    _cache_w_h = (0, 0)
+
     def __init__(self, display):
         # type: (Display) -> None
         self.display = display
@@ -18,11 +22,34 @@ class View:
     def update(self, *data):
         pass
 
+    def __setattr__(self, key, value):
+        object.__setattr__(self, key, value)
+        if not self._changed:
+            self._changed = True
+
     def render(self):
         pass
 
     def render_x_y(self, x, y):
         pass
+
+    def render_x_y_cache(self, x, y, enable_render_cache=False):
+        if not enable_render_cache:
+            self.render_x_y(x, y)
+        else:
+            if self._cache_x_y != (x, y) or self._changed:
+                # ensure expected black background
+                self.display.display.fill_rect(
+                    self._cache_x_y[0],
+                    self._cache_x_y[1],
+                    self._cache_w_h[0],
+                    self._cache_w_h[1],
+                    0,
+                )
+                self.render_x_y(x, y)
+                self._cache_x_y = (x, y)
+                self._cache_w_h = self.get_width_height()
+                self._changed = False
 
     def get_width_height(self) -> tuple[int, int]:
         return 0, 0
@@ -46,6 +73,7 @@ class BasicTextView(View):
             raise IndexError("Line index out of range")
 
     def first_render(self):
+        super().first_render()
         self.render(refresh_all=True)
 
     def render(self, refresh_all=False):
@@ -262,7 +290,7 @@ class PBar(View):
         self.shake_notice = time
 
     def get_width_height(self):
-        return self.width + len(self.text) * self.display.char_width, self.height
+        return self.width + len(self.text) * self.display.char_width + 5 + 1, self.height
 
     def render_x_y(self, x, y):
         self.x = x
