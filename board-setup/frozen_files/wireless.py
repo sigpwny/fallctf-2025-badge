@@ -33,9 +33,10 @@ class Wireless:
         """
         # mac_as_hex_bytes = ''.join(f'{b:02x}' for b in mac)
         mac_hashed = hashlib.sha256(mac).digest()
-        mac_hashed_as_hex_bytes = ''.join(f'{b:02x}' for b in mac_hashed)[:5]
+        # mac_hashed_as_hex_bytes = ''.join(f'{b:02x}' for b in mac_hashed)[:5]
+        mac_hashed_as_digits = f"{int.from_bytes(mac_hashed, 'big') % 10000:04d}"
 
-        return mac_hashed_as_hex_bytes
+        return mac_hashed_as_digits
 
     def my_mac(self) -> bytes:
         return self.sta.config('mac')
@@ -46,6 +47,7 @@ class Wireless:
     def up(self):
         if self.is_active:
             log('WARNING: Wireless up() called when already up', level='test')
+            return
 
         gc.collect()
         log(f'Free memory before WiFi up: {gc.mem_free()} bytes')
@@ -63,6 +65,7 @@ class Wireless:
     def down(self):
         if not self.is_active:
             log('WARNING: Wireless down() called when already down', level='test')
+            return
         log('Bringing down WiFi...')
         self.is_active = False
         self.esp.active(False)
@@ -107,4 +110,4 @@ class Wireless:
                     log(f'Host {host} not in peers table', level='test')
                 for callback in self.subscribers:
                     callback(msg, host, rssi)
-            await asyncio.sleep_ms(10)
+            await asyncio.sleep_ms(1)

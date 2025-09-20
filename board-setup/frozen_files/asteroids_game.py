@@ -35,7 +35,7 @@ class Asteroid:
 
 class Missile:
     # __slots__ = (...)
-    def __init__(self, x: int, y: int, dir_: float, init_speed: float, damage: int, acceleration=0.0001, top_speed=0.1, lifetime=1500):
+    def __init__(self, x: int, y: int, dir_: float, init_speed: float, damage: int, acceleration=1e-4, top_speed=5e-2, lifetime=2000):
         self.x = x
         self.y = y
         self.dir_ = dir_ # in radians
@@ -99,30 +99,42 @@ class Missile:
         if dist_sq < min_dist ** 2:
             self.exploded = time.ticks_ms()
             ship.damage += self.damage
-            log(f'Ship hit by missile! Health: {ship.health}')
+            log(f'Ship hit by missile! Health: {ship.max_health - ship.damage}')
 
 class Ship:
     MAX_SPEED = 2e-2
 
     def __init__(self, x=80, y=100, init_health=100, vdir=-math.pi/2):
-        self.x = x
-        self.y = y
-        self.vel = 0
-        self.vdir = vdir  # in radians
+        self.x = x * 1.0
+        self.y = y * 1.0
+        self.vel = 0.0
+        self.vdir = vdir * 1.0  # in radians
+        self.angular_velocity = 0.0  # in radians per ms
 
+        self.sin_a = math.sin(-vdir - math.pi/2)
+        self.cos_a = math.cos(-vdir - math.pi/2)
         self.old_x = self.x
         self.old_y = self.y
         self.screen_x = 80
         self.screen_y = 100
-        self.angular_velocity = 0  # in radians per ms
         self.damage = 0
         self.max_health = init_health
         self.hitbox_radius = 6
         self.stardust = 0
 
+    def draw_other(self, display, view_transform):
+        # x, y = view_transform(self.x, self.y)
+        # display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
+
+        ship_tip = self.x + math.cos(self.vdir) * 6, self.y + math.sin(self.vdir) * 6
+        ship_left = self.x + math.cos(self.vdir + 2.5) * 6, self.y + math.sin(self.vdir + 2.5) * 6
+        ship_right = self.x + math.cos(self.vdir - 2.5) * 6, self.y + math.sin(self.vdir - 2.5) * 6
+        coords = array('h', view_transform(*ship_tip) + view_transform(*ship_left) + view_transform(*ship_right))
+        display.poly(0, 0, coords, TFT.PURPLE, True)
+
     def draw(self, display):
         x, y = self.screen_x, self.screen_y
-        display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
+        # display.draw_circle(x, y, self.hitbox_radius, TFT.WHITE)
         arr = array('h', [0, -6, -3, 3, 3, 3])
         display.poly(x, y, arr, TFT.PURPLE, True)
 
@@ -172,6 +184,8 @@ class Ship:
                 self.vel = -self.vel * 0.5
 
 class Star:
+    STARDUST_VALUE = 25
+
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
@@ -190,6 +204,7 @@ class BroadcastUpdate:
     SHIP_AND_MISSILE = 1
     INIT_STAR = 3
     REMOVE_STAR = 4
+    END_GAME = 5
 
 
 class ClientUpdate:
@@ -198,24 +213,31 @@ class ClientUpdate:
 
 
 class GameServer:
-    def __init__(self, send_raw_msg_func=None):
+    SERVER_UPDATE_INTERVAL_MS = 200
+    SERVER_TIMEOUT_MS = 500
+
+    def __init__(self, send_raw_msg_func=None, freeplay=False):
+        num_ships = 1 if freeplay else 2
         self.asteroids = []
         self.missiles = []
         self.ships = []
         self.stars = []
         self.last_update_time = time.ticks_ms()
+        self.last_update_from_client = [0] * num_ships
         self.send_raw_msg_func = send_raw_msg_func
         self.running = True
         self.start_time = time.ticks_ms()
-        self.total_duration = 60 * 1000
+        self.total_duration = 60 * 1000 if not freeplay else 10 * 60 * 1000
+        self.initialized = False
+        self.num_ships = num_ships
 
-        self.ships.append(Ship(x=32080, y=32100, vdir=-math.pi/2))
-        self.ships.append(Ship(x=32040, y=32050, vdir=math.pi/2))
+        for i in range(num_ships):
+            self.ships.append(Ship(x=70 + i*30, y=50, vdir=-math.pi/2))
 
     def generate(self, num_asteroids=30, num_stars=10):
         for _ in range(num_asteroids):
-            x = random.randint(32000, 32200)
-            y = random.randint(32000, 32200)
+            x = random.randint(0, 200)
+            y = random.randint(0, 200)
             size = random.randint(5, 15)
             # avoid spawning too close to the ship
             for ship in self.ships:
@@ -225,18 +247,15 @@ class GameServer:
                 self.asteroids.append(Asteroid(x, y, size))
 
         for _ in range(num_stars):
-            x = random.randint(32000, 32200)
-            y = random.randint(32000, 32200)
+            x = random.randint(0, 200)
+            y = random.randint(0, 200)
             # avoid spawning too close to the ship
             for ship in self.ships:
                 if (x - ship.x) ** 2 + (y - ship.y) ** 2 < (20) ** 2:
                     continue
             self.stars.append(Star(x, y))
 
-    def update(self, ship_id, vel_change, rot_change, dt):
-        self.ships[ship_id].update(vel_change, rot_change, dt)
-        self.ships[ship_id].check_asteroid_collision(self.asteroids)
-
+    def update(self, dt):
         in_flight_missiles = [m for m in self.missiles if m.exploded is None and not m.ended]
         for missile in in_flight_missiles:
             missile.update(dt)
@@ -248,11 +267,11 @@ class GameServer:
 
         new_stars = []
         for star in self.stars:
-            for ship in self.ships:
+            for i, ship in enumerate(self.ships):
                 dist_sq = (star.x - ship.x) ** 2 + (star.y - ship.y) ** 2
                 min_dist = star.hitbox_radius + ship.hitbox_radius
                 if dist_sq < min_dist ** 2:
-                    self.broadcast_remove_star(star.id_, ship_id)
+                    self.broadcast_remove_star(star.id_, i)
                     break
             else:
                 new_stars.append(star)
@@ -271,7 +290,7 @@ class GameServer:
                 x=ship.x + math.cos(ship.vdir) * 15,
                 y=ship.y + math.sin(ship.vdir) * 15,
                 dir_=ship.vdir,
-                init_speed=0.001 + ship.vel,
+                init_speed=1e-3 + max(0, ship.vel),
                 damage=damage
             )
         )
@@ -299,29 +318,31 @@ class GameServer:
             remaining_time = max(0, self.total_duration - time.ticks_diff(time.ticks_ms(), self.start_time))
             msg += int(remaining_time).to_bytes(4, 'little')
             for ship in self.ships:
-                msg += int(ship.x).to_bytes(2, 'little')
-                msg += int(ship.y).to_bytes(2, 'little')
-                vel_scaled = ship.vel * 20
-                if vel_scaled < -1:
-                    vel_scaled = -1
-                elif vel_scaled > 1:
-                    vel_scaled = 1
-                msg += int(vel_scaled * (1<<15) + (1<<15)).to_bytes(2, 'little')
-                msg += int(ship.vdir /(2 * math.pi) * 65535).to_bytes(2, 'little')
-                msg += int(ship.damage).to_bytes(1, 'little')
+                msg += struct.pack(
+                    '<eeeeeH',
+                    ship.x,
+                    ship.y,
+                    ship.vel,
+                    ship.vdir,
+                    ship.angular_velocity,
+                    ship.damage
+                )
             for missile in self.missiles:
                 # no need to draw animations, so we'll mark a missile as ended once we notify others
                 if missile.ended:
                     continue
                 if missile.exploded is not None:
                     missile.ended = True # mark as ended for next update
-                msg += int(missile.x).to_bytes(2, 'little')
-                msg += int(missile.y).to_bytes(2, 'little')
-                msg += int(missile.dir_ /(2 * math.pi) * 65535).to_bytes(2, 'little')
-                msg += int(missile.speed * 1e5).to_bytes(2, 'little')
-                msg += int(0 if missile.exploded is None else 1).to_bytes(1, 'little')
-                msg += int(missile.id_).to_bytes(2, 'little')
-                msg += int(missile.damage).to_bytes(1, 'little')
+                msg += struct.pack(
+                    '<eeeeBHB',
+                    missile.x,
+                    missile.y,
+                    missile.dir_,
+                    missile.speed,
+                    0 if missile.exploded is None else 1,
+                    missile.id_,
+                    missile.damage
+                )
                 if len(msg) > 240:
                     log('Too many missiles to send in one message!', level='prod')
                     break
@@ -339,6 +360,10 @@ class GameServer:
         elif update_type == BroadcastUpdate.REMOVE_STAR:
             # this should be handled immediately when a star is collected
             pass
+        elif update_type == BroadcastUpdate.END_GAME:
+            msg = bytearray([BroadcastUpdate.END_GAME])
+            self.send_raw_msg(msg)
+            self.running = False
 
     def send_raw_msg(self, msg):
         if self.send_raw_msg_func is not None:
@@ -346,30 +371,47 @@ class GameServer:
             self.send_raw_msg_func(msg)
 
     def raw_msg_from_client(self, raw_data):
+        if not self.initialized:
+            return
+
         # log(f'[SERVER] received raw msg from client {client_id}: {raw_data.hex()}')
         try:
             client_id = raw_data[0]
             msg_type = raw_data[1]
             if msg_type == ClientUpdate.MOVE:
-                vel_change = struct.unpack('<e', raw_data[2:4])[0]
-                rot_change = struct.unpack('<e', raw_data[4:6])[0]
-                self.update_from_client(client_id, vel_change, rot_change)
+                x, y, vel, vdir, angular_velocity, damage = struct.unpack('<eeeeeH', raw_data[2:2+12])
+                ship = self.ships[client_id]
+                ship.x = x
+                ship.y = y
+                ship.vel = vel
+                ship.vdir = vdir
+                ship.angular_velocity = angular_velocity
+                ship.cos_a = math.cos(-vdir - math.pi/2)
+                ship.sin_a = math.sin(-vdir - math.pi/2)
+                ship.damage = damage
             elif msg_type == ClientUpdate.FIRE_MISSILE:
                 damage = raw_data[2]
                 self.fire_missile(ship_index=client_id, damage=damage)
+            else:
+                raise RuntimeError(f'Unknown message type {msg_type} from client')
+            self.last_update_from_client[client_id] = time.ticks_ms()
+            self.update_from_client()
         except IndexError:
             log(f'Malformed message from client: {raw_data.hex()}', level='prod')
 
 
-    def update_from_client(self, client_id, vel_change, rot_change):
+    def update_from_client(self):
         current_time = time.ticks_ms()
         dt = time.ticks_diff(current_time, self.last_update_time)
-        self.update(client_id, vel_change, rot_change, dt)
+        self.update(dt)
         self.last_update_time = current_time
 
     async def run(self):
+        self.initialized = False
+
         self.generate()
 
+        self.broadcast_update(BroadcastUpdate.SHIP_AND_MISSILE)
         await asyncio.sleep_ms(100)
         self.broadcast_update(BroadcastUpdate.ASTEROID)
         await asyncio.sleep_ms(100)
@@ -378,20 +420,38 @@ class GameServer:
         self.last_update_time = time.ticks_ms()
         self.start_time = time.ticks_ms()
 
+        self.initialized = True
+
         while self.running:
             if time.ticks_diff(time.ticks_ms(), self.start_time) > self.total_duration:
                 self.running = False
                 # allow it to send the last update
             self.broadcast_update(BroadcastUpdate.SHIP_AND_MISSILE)
-            await asyncio.sleep_ms(50)
+            await asyncio.sleep_ms(self.SERVER_UPDATE_INTERVAL_MS)
+
+            if any(
+                time.ticks_diff(time.ticks_ms(), t) > self.SERVER_TIMEOUT_MS
+                for t in self.last_update_from_client
+            ):
+                log(f'A client has not sent updates for {self.SERVER_TIMEOUT_MS} ms, ending game', level='prod')
+                self.broadcast_update(BroadcastUpdate.END_GAME)
 
 
 class GameClient:
-    def __init__(self, client_id, ship_stats):
+    CLIENT_UPDATE_INTERVAL_MS = 200
+
+    def __init__(self, client_id, ship_stats, freeplay):
         self.ship_stats = ship_stats
         self.asteroids = []
         self.missiles = []
         self.my_ship = Ship(init_health=100 + ship_stats.stats['shields'] * 10)
+        self.my_ship_position_initialized = False
+        if freeplay:
+            self.other_ship = None
+            self.num_ships = 1
+        else:
+            self.other_ship = Ship()
+            self.num_ships = 2
         self.stars = []
         self.last_missile_launch = 0
         self.client_id = client_id
@@ -402,7 +462,12 @@ class GameClient:
     def update(self, joystick_x, joystick_y, dt):
         vel_change = joystick_y * JOYSTICK_VEL_SCALE * (1 + 0.2 * self.ship_stats.stats['thrusters'])
         rot_change = joystick_x * JOYSTICK_ROT_SCALE
+
         self.my_ship.update(vel_change, rot_change, dt)
+        self.my_ship.check_asteroid_collision(self.asteroids)
+
+        if self.other_ship is not None:
+            self.other_ship.update(0, 0, dt)  # other ship is updated from server messages
 
         for missile in self.missiles:
             if missile.exploded is None:
@@ -412,12 +477,19 @@ class GameClient:
         self.missiles = [m for m in self.missiles if not m.ended]
 
         now = time.ticks_ms()
-        if time.ticks_diff(now, self.last_send_move_update) > 50:
-            msg = bytearray([self.client_id, ClientUpdate.MOVE])
-            msg += struct.pack('<e', vel_change)
-            msg += struct.pack('<e', rot_change)
-            self.raw_msg_server_func(msg)
+        if time.ticks_diff(now, self.last_send_move_update) > self.CLIENT_UPDATE_INTERVAL_MS:
             self.last_send_move_update = now
+            msg = bytearray([self.client_id, ClientUpdate.MOVE])
+            msg += struct.pack(
+                '<eeeeeH',
+                self.my_ship.x,
+                self.my_ship.y,
+                self.my_ship.vel,
+                self.my_ship.vdir,
+                self.my_ship.angular_velocity,
+                self.my_ship.damage,
+            )
+            self.raw_msg_server_func(msg)
 
     def update_from_server(self, raw_data):
         msg_type = raw_data[0]
@@ -445,45 +517,45 @@ class GameClient:
             gained_ship_id = raw_data[3]
             self.stars = [s for s in self.stars if s.id_ != star_id]
             if gained_ship_id == self.client_id:
-                self.my_ship.stardust += 1
+                self.my_ship.stardust += Star.STARDUST_VALUE
                 log(f'Collected a star! Total stardust: {self.my_ship.stardust}')
         elif msg_type == BroadcastUpdate.SHIP_AND_MISSILE:
-            num_ships = 2
             idx = 1
             self.remaining_time = int.from_bytes(raw_data[idx:idx+4], 'little')
             idx += 4
-            for i in range(num_ships):
-                x = int.from_bytes(raw_data[idx:idx+2], 'little')
-                y = int.from_bytes(raw_data[idx+2:idx+4], 'little')
-                vel_raw = int.from_bytes(raw_data[idx+4:idx+6], 'little')
-                vel = (vel_raw - (1<<15)) / (1<<15) / 20
-                vdir = int.from_bytes(raw_data[idx+6:idx+8], 'little') / 65535 * 2 * math.pi
-                damage = raw_data[idx+8]
+            for i in range(self.num_ships):
+                x, y, vel, vdir, angular_velocity, damage = struct.unpack('<eeeeeH', raw_data[idx:idx+12])
+                idx += 12
                 if i == self.client_id:
-                    self.my_ship.x = x
-                    self.my_ship.y = y
-                    self.my_ship.vel = vel
-                    self.my_ship.vdir = vdir
-                    self.my_ship.cos_a = math.cos(-vdir - math.pi/2)
-                    self.my_ship.sin_a = math.sin(-vdir - math.pi/2)
-                    self.my_ship.damage = damage
-                idx += 9
+                    if not self.my_ship_position_initialized:
+                        self.my_ship.x = x
+                        self.my_ship.y = y
+                        self.my_ship.vel = vel
+                        self.my_ship.vdir = vdir
+                        self.my_ship.angular_velocity = angular_velocity
+                        self.my_ship.cos_a = math.cos(-vdir - math.pi/2)
+                        self.my_ship.sin_a = math.sin(-vdir - math.pi/2)
+                        self.my_ship_position_initialized = True
+                        log(f'initialized my ship position to x={x}, y={y}')
+                    if damage < self.my_ship.damage:
+                        log('server damage lower than client, ignoring')
+                    else:
+                        self.my_ship.damage = damage
+                elif self.other_ship is not None:
+                    self.other_ship.x = x
+                    self.other_ship.y = y
+                    self.other_ship.vel = vel
+                    self.other_ship.vdir = vdir
+                    self.other_ship.cos_a = math.cos(-vdir - math.pi/2)
+                    self.other_ship.sin_a = math.sin(-vdir - math.pi/2)
+                    self.other_ship.damage = damage
             while idx + 9 <= len(raw_data):
-                x = int.from_bytes(raw_data[idx:idx+2], 'little')
-                y = int.from_bytes(raw_data[idx+2:idx+4], 'little')
-                dir_ = int.from_bytes(raw_data[idx+4:idx+6], 'little') / 65535 * 2 * math.pi
-                speed = int.from_bytes(raw_data[idx+6:idx+8], 'little') / 1e5
-                exploded = raw_data[idx+8]
-                missile_id = int.from_bytes(raw_data[idx+9:idx+11], 'little')
-                damage = raw_data[idx+11]
+                x, y, dir_, speed, exploded, missile_id, damage = struct.unpack('<eeeeBHB', raw_data[idx:idx+12])
+                idx += 12
                 # either create new missile or update existing one
                 for missile in self.missiles:
                     if missile.id_ == missile_id:
-                        missile.x = x
-                        missile.y = y
-                        missile.dir_ = dir_
-                        missile.speed = speed
-                        missile.damage = damage
+                        # no need to update position or direction as it can be calculated from initial values
                         if exploded and missile.exploded is None:
                             missile.exploded = time.ticks_ms()
                         break
@@ -493,7 +565,6 @@ class GameClient:
                     if exploded and missile.exploded is None:
                         missile.exploded = time.ticks_ms()
                     self.missiles.append(missile)
-                idx += 12
 
 
     def fire_missile(self):
@@ -519,12 +590,12 @@ class GameClient:
             asteroid.draw(display.display, self.my_ship.apply_view_around_ship)
 
         # health bar
-        display.display.fill_rect(40, 120, 120, 5, TFT.WHITE)
+        display.display.fill_rect(40, 120, 100, 5, TFT.WHITE)
         health_ratio = (self.my_ship.max_health - self.my_ship.damage) / self.my_ship.max_health
         display.display.fill_rect(40, 120, int(100 * health_ratio), 5, TFT.RED)
 
         # stardust
-        display.draw_text(0, 118, f'+{self.my_ship.stardust}SD')
+        display.draw_text(0, 118, f'{self.my_ship.stardust:2}SD')
 
         # missiles
         for missile in self.missiles:
@@ -535,30 +606,39 @@ class GameClient:
         for star in self.stars:
             star.draw(display.display, self.my_ship.apply_view_around_ship)
 
+        # other ship
+        if self.other_ship is not None:
+            self.other_ship.draw_other(display.display, self.my_ship.apply_view_around_ship)
+
         # ship
         self.my_ship.draw(display.display)
 
         # remaining time
         minutes = self.remaining_time // 60000
-        seconds = (self.remaining_time % 60000) / 1000
-        display.draw_text(80, 0, f'{minutes}:{seconds:04.1f}')
+        seconds = (self.remaining_time % 60000) // 1000
+        display.draw_text(80, 0, f'{minutes}:{seconds:02d}')
 
 
 class AsteroidsGameClient(Runnable):
-    def __init__(self, device_io: "DeviceIO", wifi_client_id, wifi_client_send_fn):
+    CLIENT_TIMEOUT_MS = 500
+
+    def __init__(self, device_io: "DeviceIO", wifi_client_id, wifi_client_send_fn, freeplay=False):
         self.device_io = device_io
-        self.world = GameClient(wifi_client_id, self.device_io.ship_stats)
+        self.world = GameClient(wifi_client_id, self.device_io.ship_stats, freeplay=freeplay)
         self.world.raw_msg_server_func = wifi_client_send_fn
         self.joystick_x = 0
         self.joystick_y = 0
         self.last_update_time = time.ticks_ms()
         self.paused = False
         self.game_over = False
+        self.last_recv_time = time.ticks_ms()
+        self.freeplay = freeplay
 
     def wifi_recv_callback(self, msg):
         """
         Receive message from wifi and pass to client
         """
+        self.last_recv_time = time.ticks_ms()
         self.world.update_from_server(msg)
 
     def _update(self):
@@ -590,13 +670,23 @@ class AsteroidsGameClient(Runnable):
             self.paused = True
 
     async def _end_game_screen(self):
+        health_bonus = int(max(0, self.world.my_ship.max_health - self.world.my_ship.damage) * 0.75)
+        total_stardust = self.world.my_ship.stardust + health_bonus
+        self.device_io.ship_stats.add_stardust(total_stardust)
+        msgs = ['Game Over', '', f'Stardust found: {self.world.my_ship.stardust}', f'Health bonus: {health_bonus}', f'Total: {total_stardust}']
+        if self.freeplay:
+            msgs += [f'(not added to total', 'in freeplay mode)']
         await menu_with_text(
             self.device_io,
-            ['Game Over', f'Stardust gained: {self.world.my_ship.stardust}'],
+            msgs,
             [
+                ('(scroll down)', None, None),
                 ('Done', None, lambda: None)
             ]
         )
+
+    def end_game(self):
+        self.game_over = True
 
     async def run(self):
         self.device_io.joystick.subscribe(self._joystick_event, events=['xy'])
@@ -615,19 +705,32 @@ class AsteroidsGameClient(Runnable):
             await asyncio.sleep_ms(1)
 
             if self.world.my_ship.damage >= self.world.my_ship.max_health:
-                self.game_over = True
+                self.end_game()
 
             if self.world.remaining_time <= 0:
-                self.game_over = True
+                self.end_game()
+
+            # timeout if no messages received for a while
+            if time.ticks_diff(time.ticks_ms(), self.last_recv_time) > self.CLIENT_TIMEOUT_MS:
+                log(f'No messages received from server for {self.CLIENT_TIMEOUT_MS} ms, ending game')
+                self.end_game()
 
             if self.paused:
-                await menu_with_text(
-                    self.device_io,
-                    ['Game Paused'],
-                    [
-                        ('Resume', None, lambda: setattr(self, 'paused', False)),
-                        ('End game', None, lambda: setattr(self, 'game_over', True)),
-                    ]
+                async def updates():
+                    while self.paused and not self.game_over:
+                        self._update()
+                        await asyncio.sleep_ms(1)
+
+                await asyncio.gather(
+                    menu_with_text(
+                        self.device_io,
+                        ['Game Paused'],
+                        [
+                            ('Resume', None, lambda: setattr(self, 'paused', False)),
+                            ('End game', None, self.end_game),
+                        ]
+                    ),
+                    updates()
                 )
 
         await self._end_game_screen()
@@ -637,9 +740,9 @@ class AsteroidsGameClient(Runnable):
 
 
 class AsteroidsGameServerAndClient(Runnable):
-    def __init__(self, device_io: "DeviceIO", wifi_client_id, wifi_server_send_fn):
-        self.server = GameServer(send_raw_msg_func=self._server_send_fn)
-        self.client = AsteroidsGameClient(device_io, wifi_client_id, self._client_send_fn)
+    def __init__(self, device_io: "DeviceIO", wifi_client_id, wifi_server_send_fn, freeplay=False):
+        self.server = GameServer(send_raw_msg_func=self._server_send_fn, freeplay=freeplay)
+        self.client = AsteroidsGameClient(device_io, wifi_client_id, self._client_send_fn, freeplay=freeplay)
         self.wifi_server_send_fn = wifi_server_send_fn
 
     def _server_send_fn(self, msg):
@@ -660,6 +763,10 @@ class AsteroidsGameServerAndClient(Runnable):
         Receive message from wifi and pass to server
         """
         self.server.raw_msg_from_client(msg)
+
+    def end_game(self):
+        self.client.end_game()
+        self.server.running = False
 
     async def run(self):
         server_task = asyncio.create_task(self.server.run())
