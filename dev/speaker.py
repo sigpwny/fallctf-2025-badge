@@ -38,6 +38,8 @@ class Speaker:
         """Non-blocking version of beep that returns immediately"""
         if self.persist.get_boolean('mute'):
             return
+        if self.speaker.is_playing:
+            return
         log(f"Beep (nowait): {frequency}Hz for {duration_ms}ms")
         self.speaker.play_tone(frequency)
         async def stop_later():
@@ -48,6 +50,8 @@ class Speaker:
     def success_sound(self):
         """Play a non-blocking success sound (ascending tones)"""
         if self.persist.get_boolean('mute'):
+            return
+        if self.speaker.is_playing:
             return
         log("Playing success sound")
         frequencies = [1000, 1200, 1500]  # ascending frequencies

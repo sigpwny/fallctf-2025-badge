@@ -16,13 +16,19 @@ JOYSTICK_ROT_SCALE = 1e-4
 
 
 class Asteroid:
-    # __slots__ = (...)
+    __slots__ = ('x', 'y', 'size')
     def __init__(self, x: int, y: int, size: int):
         self.x = x
         self.y = y
         self.size = size
-        self.hitbox_radius = size
-        self.damage = size * 2
+
+    @property
+    def hitbox_radius(self):
+        return self.size
+
+    @property
+    def damage(self):
+        return self.size * 2
 
     def draw(self, display, view_transform):
         x, y = view_transform(self.x, self.y)
@@ -186,6 +192,7 @@ class Ship:
 class Star:
     STARDUST_VALUE = 25
 
+    __slots__ = ('x', 'y', 'id_', 'hitbox_radius')
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
@@ -231,10 +238,12 @@ class GameServer:
         self.initialized = False
         self.num_ships = num_ships
 
-        for i in range(num_ships):
-            self.ships.append(Ship(x=70 + i*30, y=50, vdir=-math.pi/2))
-
     def generate(self, num_asteroids=30, num_stars=10):
+        self.ships = []
+        for i in range(self.num_ships):
+            self.ships.append(Ship(x=50 + i*100, y=50, vdir=-math.pi/2))
+
+        self.asteroids = []
         for _ in range(num_asteroids):
             x = random.randint(0, 200)
             y = random.randint(0, 200)
@@ -246,6 +255,7 @@ class GameServer:
             else:
                 self.asteroids.append(Asteroid(x, y, size))
 
+        self.stars = []
         for _ in range(num_stars):
             x = random.randint(0, 200)
             y = random.randint(0, 200)
@@ -278,11 +288,6 @@ class GameServer:
         self.stars = new_stars
 
     def fire_missile(self, ship_index, damage):
-        current_time = time.ticks_ms()
-        if time.ticks_diff(current_time, self.last_missile_launch) < 500:
-            return
-        self.last_missile_launch = current_time
-
         log('Firing missile!')
         ship = self.ships[ship_index]
         self.missiles.append(
@@ -398,7 +403,7 @@ class GameServer:
                 damage = raw_data[2]
                 self.fire_missile(ship_index=client_id, damage=damage)
             else:
-                raise RuntimeError(f'Unknown message type {msg_type} from client')
+                log(f'Unknown message type {msg_type} from client')
             self.last_update_from_client[client_id] = time.ticks_ms()
             self.update_from_client()
         except IndexError:
@@ -421,7 +426,6 @@ class GameServer:
         self.broadcast_update(BroadcastUpdate.ASTEROID)
         await asyncio.sleep_ms(100)
         self.broadcast_update(BroadcastUpdate.INIT_STAR)
-        self.last_missile_launch = time.ticks_ms()
         self.last_update_time = time.ticks_ms()
         self.start_time = time.ticks_ms()
 
