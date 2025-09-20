@@ -11,30 +11,21 @@ if TYPE_CHECKING:
 
 MESSAGE = '''Welcome to the
 FallCTF badge!
-Here you will do
-stuff and things!
-line
-a line
-aa line
-aaa line
-line 1
-line 2
-line 3
-line 4
-line 5
-line 6
-line 7
-line 8
-line 9
-line 10
-line 11
-line 12
-line 13
-line 14
-line 15
-line 16
-line 17
-TODO
+
+Connect and battle
+others to earn
+StarDust (SD),
+which you can spend
+for upgrades (and
+maybe get a flag!)
+
+Battle new people
+to get more SD, or
+check out the
+extras.
+
+Also check out the
+source code.
 
 Press A to continue.'''
 LINES = MESSAGE.split('\n')
@@ -71,7 +62,7 @@ class IntroScreen(Runnable):
 
     def display_lines(self):
         i = 0
-        for i in range(self.view.max_line):
+        for i in range(min(self.view.max_line, len(LINES))):
             self.view.update(i, LINES[i + self.scroll])
             i += 1
 
