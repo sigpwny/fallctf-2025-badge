@@ -1,5 +1,5 @@
 from menu import Runnable, menu_with_text
-from view import PBar, BasicTextView, BitMapView
+from view import PBar, BasicTextView, BitMapView, UnboxedLine
 from layout import Style, ComplexLayout
 import asyncio
 
@@ -58,6 +58,10 @@ class UpgradeMenu(Runnable):
                 self.state = CANCELLING
 
     async def run(self):
+        with open("assets/shield_small.raw", "rb") as f:
+            shield_img = bytearray(f.read())
+        with open("assets/weapons_small.raw", "rb") as f:
+            weapon_img = bytearray(f.read())
         self.device_io.joystick.subscribe(
             self.joystick_event, events=["up-down", "left-right"]
         )
@@ -85,6 +89,8 @@ class UpgradeMenu(Runnable):
         with open("assets/ship.raw", "rb") as f:
             ship_img = bytearray(f.read())
 
+        inputs_idx = [3, 4, 6, 7]
+
         l = ComplexLayout(
             self.device_io.display,
             (
@@ -92,82 +98,113 @@ class UpgradeMenu(Runnable):
                 Style(),
             ),
             (
-                PBar(
-                    self.device_io.display,
-                    99,
-                    self.device_io.ship_stats.faction.boosts[CATEGORIES[0]],
-                    width=30,
-                    text_mode=2,
-                ),
-                Style(posType=0b01, x=10, y=5),
+                BitMapView(self.device_io.display, weapon_img, 23, 20, format=1),
+                Style(posType=0b00, x=10, y=35),
+            ),
+            (
+                BitMapView(self.device_io.display, shield_img, 17, 20, format=1),
+                Style(posType=0b00, x=110, y=35),
             ),
             (
                 PBar(
                     self.device_io.display,
-                    99,
-                    self.device_io.ship_stats.faction.boosts[CATEGORIES[1]],
-                    width=30,
+                    50,
+                    self.device_io.ship_stats.faction.boosts[CATEGORIES[0]],
+                    width=28,
                     text_mode=2,
                 ),
-                Style(posType=0b11, x=40),
+                Style(posType=0b00, x=5, y=20),
+            ),
+            (
+                PBar(
+                    self.device_io.display,
+                    50,
+                    self.device_io.ship_stats.faction.boosts[CATEGORIES[1]],
+                    width=28,
+                    text_mode=2,
+                ),
+                Style(posType=0b00, x=100, y=20),
             ),
             (
                 BitMapView(self.device_io.display, ship_img, 34, 42, format=1),
-                Style(posType=0b01, x=60, y=-10),
+                Style(posType=0b00, x=50, y=40),
             ),
             (
                 PBar(
                     self.device_io.display,
-                    99,
+                    50,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[2]],
-                    width=30,
+                    width=28,
                     text_mode=2,
                 ),
-                Style(posType=0b01, x=10),
+                Style(posType=0b00, x=5, y=90),
             ),
             (
                 PBar(
                     self.device_io.display,
-                    99,
+                    50,
                     self.device_io.ship_stats.faction.boosts[CATEGORIES[3]],
-                    width=30,
+                    width=28,
                     text_mode=2,
                 ),
-                Style(posType=0b11, x=40),
+                Style(posType=0b00, x=100, y=90),
             ),
             enable_render_cache=True,
+            # fmt: off
+            background_views=[
+                # four lines from inputs to ship, padding is 2
+                UnboxedLine(self.device_io.display, 5 + 28 + 2, 20 + 10 + 2, 52 - 2, 40 - 2, self.device_io.display.display.tft.GREEN),
+                UnboxedLine(self.device_io.display, 100 - 2, 20 + 10 + 2, 52 + 34 + 2, 40 - 2, self.device_io.display.display.tft.GREEN),
+                UnboxedLine(self.device_io.display, 5 + 28 + 2, 90 - 2, 52 - 2, 40 + 42 + 2, self.device_io.display.display.tft.GREEN),
+                UnboxedLine(self.device_io.display, 100 - 2, 90 - 2, 52 + 34 + 2, 40 + 42 + 2, self.device_io.display.display.tft.GREEN),
+            ]
+            # fmt: on
         )
 
-        def text_updater():
+        def text_updater(pts):
             l[0][0].update(0, f"StarDust: {self.device_io.ship_stats.stardust}")
-            l[0][0].update(1, f"Cost: {self.device_io.ship_stats.cost_to_upgrade()}")
+            l[0][0].update(1, f"Cost: {self.device_io.ship_stats.cost_to_upgrade(pts)}")
 
-        text_updater()
+        text_updater(0)
 
         prev_val = 0
+        pts_delta_sum = 0
+        pts_delta_sum_delta = 0
 
         while self.keep_running:
             curr_select = (self.select_left, self.select_bottom)
-            curr: "PBar" = l[1 + self.select_left + 3 * self.select_bottom][0]
+            curr: "PBar" = l[inputs_idx[self.select_left + 2 * self.select_bottom]][0]
             if self.state == SELECTING:
                 if curr_select != self.prev_select:
                     curr.set_color(self.device_io.display.display.tft.YELLOW)
-                    l[1 + self.prev_select[0] + 3 * self.prev_select[1]][0].set_color(
-                        self.device_io.display.display.tft.WHITE
-                    )
+                    l[inputs_idx[self.prev_select[0] + 2 * self.prev_select[1]]][
+                        0
+                    ].set_color(self.device_io.display.display.tft.WHITE)
                     self.prev_select = curr_select
             elif self.state == CONFIRMING:
                 # TODO: confirm
                 self.delta = 0
-                curr.set_color(self.device_io.display.display.tft.YELLOW)
-                self.prev_select = (self.select_left, self.select_bottom)
-                self.state = SELECTING
+                if not self.device_io.ship_stats.upgrade(
+                    CATEGORIES[self.select_left + 2 * self.select_bottom]
+                ):
+                    l[0][0].shake()
+                    self.state = ADJUSTING
+                else:
+                    text_updater(pts_delta_sum + pts_delta_sum_delta)
+                    pts_delta_sum += pts_delta_sum_delta
+                    pts_delta_sum_delta = 0
+                    curr.update(curr.value, curr.value)
+                    curr.set_color(self.device_io.display.display.tft.YELLOW)
+                    self.prev_select = (self.select_left, self.select_bottom)
+                    self.state = SELECTING
             elif self.state == ENTERING:
                 curr.set_color(self.device_io.display.display.tft.GREEN)
                 prev_val = curr.value
                 self.state = ADJUSTING
             elif self.state == CANCELLING:
                 self.delta = 0
+                text_updater(pts_delta_sum)
+                pts_delta_sum_delta = 0
                 curr.update(prev_val)
                 curr.set_color(self.device_io.display.display.tft.YELLOW)
                 self.prev_select = (self.select_left, self.select_bottom)
@@ -176,6 +213,9 @@ class UpgradeMenu(Runnable):
                 # TODO: do upgrade
                 if curr.update(curr.value + self.delta) != 0:
                     curr.shake()
+                else:
+                    pts_delta_sum_delta += self.delta
+                    text_updater(pts_delta_sum + pts_delta_sum_delta)
             l.render()
             await asyncio.sleep(0.1)
 

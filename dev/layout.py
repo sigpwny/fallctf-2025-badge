@@ -92,8 +92,10 @@ class ComplexLayout(Layout):
     _changed = True
     _inited = False
 
-    def __init__(self, display, *views, x=0, y=0, enable_render_cache=False):
-        # type: (Display, *tuple[View, Style], int, int, bool) -> None
+    def __init__(
+        self, display, *views, x=0, y=0, enable_render_cache=False, background_views=[]
+    ):
+        # type: (Display, *tuple[View, Style], int, int, bool, list[View]) -> None
         """
         Init a Complex Layout
         @param display: Display to render to
@@ -106,14 +108,17 @@ class ComplexLayout(Layout):
         self.views: list[tuple[View, Style]] = list(views)
         self.x = x
         self.y = y
-        self.cache = []
         self.enable_render_cache = enable_render_cache
+        self.background_views = background_views
 
     def __len__(self):
         return len(self.views)
 
     def first_render(self, *args, **kwargs):
         self.display.clear()
+        for v in self.background_views:
+            v.first_render(*args, **kwargs)
+            v.render_x_y(0, 0)
         self.render()
 
     def __setitem__(self, index: int, view_style):
@@ -129,8 +134,7 @@ class ComplexLayout(Layout):
     def append(self, view_style):
         # type: (tuple[View, Style]) -> None
         self.views.append(view_style)
-        if self.enable_render_cache:
-            self.cache.clear()
+        self._changed = True
 
     def render(self):
         super().render()
@@ -140,6 +144,8 @@ class ComplexLayout(Layout):
             return
         if not self.enable_render_cache:
             self.display.clear()
+            for v in self.background_views:
+                v.render_x_y(0, 0)
         cur_x = self.x
         cur_y = self.y
         for v, s in self.views:

@@ -84,8 +84,8 @@ class Display:
     def clear(self):
         self.display.clear()
 
-    def draw_text(self, x, y, text):
-        self.display.text(text, x, y, 0xffff)
+    def draw_text(self, x, y, text, color=0xffff):
+        self.display.text(text, x, y, color)
 
     def draw_fullscreen_image(self, image_path):
         with open(image_path, 'rb') as f:
