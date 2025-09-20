@@ -59,10 +59,10 @@ class View:
 
 
 class BasicTextView(View):
-    def __init__(self, display, shake_color=None):
+    def __init__(self, display, lines=[], shake_color=None):
         super().__init__(display)
         self.max_line = self.display.height // self.display.line_height
-        self.lines = []
+        self.lines = lines[:self.max_line]
         if shake_color is None:
             self.shake_color = self.display.display.tft.RED
         else:
@@ -277,7 +277,7 @@ class UnboxedLine(View):
         self._x2 = x2
         self._y2 = y2
 
-    def setColor(self, color):
+    def set_color(self, color):
         self.color = color
 
     def render_x_y(self, x, y):

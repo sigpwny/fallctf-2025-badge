@@ -37,3 +37,5 @@ for f in assets/*.raw; do
         mpremote $mpremote_connect cp "$f" :assets/
     fi
 done
+
+mpremote $mpremote_connect cp "assets/monospaceKrypton_24.mfnt" :assets/

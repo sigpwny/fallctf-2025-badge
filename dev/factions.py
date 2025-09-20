@@ -1,7 +1,13 @@
 class Faction:
     def __init__(self, name: str, **boosts: int) -> None:
         self.name = name
-        self.boosts = boosts
+        self.boosts: dict = {
+            'weapons': 0,
+            'shields': 0,
+            'thrusters': 0,
+            'sensors': 0,
+        }
+        self.boosts.update(boosts) 
 
 
 FACTION_UNDECIDED = Faction('undecided')
