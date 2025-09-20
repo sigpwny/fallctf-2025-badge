@@ -1,10 +1,11 @@
 from view import BasicTextView
-from menu import ListMenu, ImageMenu, menu_with_text
+from menu import ListMenu, HomeMenu, menu_with_text
 from layout import Style
 import wireless
 from connect import ConnectMenu
 from upgrade import UpgradeMenu
 from settings import SettingsMenu
+from more import MoreMenu
 from intro_screen import IntroScreen
 
 from logger import log
@@ -27,16 +28,12 @@ class MainController:
 
         log('MainController main loop')
         while True:
-            await ImageMenu(
+            await HomeMenu(
                 self.device_io,
-                [
-                    'assets/first_page_1.raw',
-                    'assets/first_page_2.raw',
-                    'assets/first_page_3.raw',
-                ],
                 [
                     ConnectMenu(self.device_io),
                     UpgradeMenu(self.device_io),
+                    MoreMenu(self.device_io),
                     SettingsMenu(self.device_io),
                 ]
             ).run()

@@ -32,6 +32,7 @@ files=(
     upgrade.py
     view.py
     wireless.py
+    more.py
 )
 
 for file in "${files[@]}"; do

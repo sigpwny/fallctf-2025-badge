@@ -1,4 +1,5 @@
 import asyncio
+import micropython
 from logger import Logger, set_logger, log
 # NOTE: Do NOT add any more local imports! Dynamically import most modules in _start()
 
@@ -20,6 +21,9 @@ class Environment:
         try:
             asyncio.run(self._start())
         except Exception as e:
+            if isinstance(e, MemoryError):
+                print('micropython.mem_info():')
+                micropython.mem_info()
             if self.device_io is not None:
                 text = f"Fatal error: {e}"
                 log(text)
