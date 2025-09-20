@@ -29,9 +29,9 @@ class Environment:
                     self.device_io.display.draw_text(0, i // 20 * 10, text[i:i+20])
                     idx += 1
                 idx += 1
-                self.device_io.display.draw_text(0, idx * 10, "Press back reset")
+                self.device_io.display.draw_text(0, idx * 10, "Press reset on")
                 idx += 1
-                self.device_io.display.draw_text(0, idx * 10, "button to restart")
+                self.device_io.display.draw_text(0, idx * 10, "back to restart")
                 self.device_io.display.show()
             raise e
 

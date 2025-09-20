@@ -60,6 +60,9 @@ class Joystick:
             # clamp to [0, 1]
             x_val = max(0.0, min(1.0, x_val))
             y_val = max(0.0, min(1.0, y_val))
+            # small value around center is considered exactly center
+            x_val = 0.5 if abs(x_val - 0.5) < 0.05 else x_val
+            y_val = 0.5 if abs(y_val - 0.5) < 0.05 else y_val
 
             for callback in self.subscribers['xy']:
                 callback('xy', {'x': x_val, 'y': y_val})

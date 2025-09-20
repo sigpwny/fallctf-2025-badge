@@ -7,6 +7,7 @@ from view import BasicTextView
 from menu import Runnable, ListMenu, menu_with_text
 from wireless import Wireless
 from flag_manager import add_flag, get_installed_flags
+from asteroids_game import AsteroidsGameServerAndClient, AsteroidsGameClient
 
 from logger import log
 
@@ -27,6 +28,7 @@ class ConnectMenuState:
     START_AUTOBATTLE    = 9
     GIVE_FLAGS          = 10
     GOT_FLAGS           = 11
+    ASTEROID_GAME       = 12
 
 
 class ConnectMenu(Runnable):
@@ -47,6 +49,7 @@ class ConnectMenu(Runnable):
         self._combined_random_seed = 0
         self._host_side = None
         self._got_flag = None
+        self._wifi_callback = None
 
     def _wireless_event(self, msg, host, rssi):
         # log(f'ConnectMenu received wireless event from {host.hex()}: {msg} (rssi={rssi}), state={self._state}')
@@ -129,6 +132,12 @@ class ConnectMenu(Runnable):
                 self._got_flag = flag
                 self._state = ConnectMenuState.GOT_FLAGS
                 self._cancel_menu_event.set()
+            elif msg.startswith(b'ASTEROID_GAME') and self._state == ConnectMenuState.READY_TO_GAME and not self._host_side:
+                log(f'Received ASTEROID_GAME start from {host.hex()}')
+                self._state = ConnectMenuState.ASTEROID_GAME
+                self._cancel_menu_event.set()
+            elif self._state == ConnectMenuState.ASTEROID_GAME and self._wifi_callback is not None:
+                self._wifi_callback(msg)
             else:
                 log(f'ConnectMenu received unknown wireless msg from {host.hex()}: {msg}')
 
@@ -205,6 +214,7 @@ class ConnectMenu(Runnable):
                 self._recent_peers = []
                 self._peer = None
                 self._host_side = None
+                self._wifi_callback = None
 
                 # reboot wifi if not active
                 if self.device_io.wireless.is_active:
@@ -246,7 +256,8 @@ class ConnectMenu(Runnable):
                     continue
                 if self._host_side:
                     activities = [
-                        ('Auto Battle', None, self._state_change_func(ConnectMenuState.START_AUTOBATTLE))
+                        ('Auto Battle', None, self._state_change_func(ConnectMenuState.START_AUTOBATTLE)),
+                        ('Asteroid Game', None, self._state_change_func(ConnectMenuState.ASTEROID_GAME))
                     ]
                     if len(get_installed_flags()) > 0:
                         activities.append(('Give flags', None, self._state_change_func(ConnectMenuState.GIVE_FLAGS)))
@@ -347,6 +358,24 @@ class ConnectMenu(Runnable):
                         [('OK', None, self._state_change_func(ConnectMenuState.READY_TO_GAME))]
                     )
                 self._got_flag = None
+            elif self._state == ConnectMenuState.ASTEROID_GAME:
+                if self._host_side is None:
+                    log('ERROR: ASTEROID_GAME state but _host_side is None', level='prod')
+                    self._state = ConnectMenuState.CONN_FAILED
+                    continue
+                def send(msg):
+                    self.device_io.wireless.send(self._peer, msg, sync=False)
+                if self._host_side:
+                    self.device_io.wireless.send(self._peer, b'ASTEROID_GAME', sync=False)
+                    game = AsteroidsGameServerAndClient(self.device_io, 0, send)
+                    self._wifi_callback = game.wifi_recv_callback
+                    await game.run()
+                else:
+                    game = AsteroidsGameClient(self.device_io, 1, send)
+                    self._wifi_callback = game.wifi_recv_callback
+                    await game.run()
+                self._wifi_callback = None
+                self._state = ConnectMenuState.GOBACK
             else:
                 await menu_with_text(
                     self.device_io,

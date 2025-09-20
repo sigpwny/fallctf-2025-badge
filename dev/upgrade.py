@@ -20,6 +20,7 @@ class UpgradeMenu(Runnable):
         self.selecting = True
         self.entered = False
         self.confirmed = False
+        self.cancelled = False
         self.delta = 0
 
     def joystick_event(self, event_type, value):
@@ -40,6 +41,8 @@ class UpgradeMenu(Runnable):
                     self.delta = 1
                 else:
                     self.delta = -1
+            else:
+                self.delta = 0
 
     def button_event(self, button, pressed):
         if not pressed:
@@ -51,8 +54,11 @@ class UpgradeMenu(Runnable):
             else:
                 # save
                 self.confirmed = True
-        if self.selecting and button == "b":
-            self.keep_running = False
+        if button == "b":
+            if self.selecting:
+                self.keep_running = False
+            else:
+                self.cancelled = True
 
     async def run(self):
         self.device_io.joystick.subscribe(
@@ -136,9 +142,11 @@ class UpgradeMenu(Runnable):
 
         text_updater()
 
+        prev_val = 0
+
         while self.keep_running:
             curr_select = (self.select_left, self.select_bottom)
-            curr = l[1 + self.select_left + 3 * self.select_bottom][0]
+            curr: "PBar" = l[1 + self.select_left + 3 * self.select_bottom][0]
             if self.selecting and curr_select != self.prev_select:
                 curr.set_color(self.device_io.display.display.tft.YELLOW)
                 l[1 + self.prev_select[0] + 3 * self.prev_select[1]][0].set_color(
@@ -155,10 +163,19 @@ class UpgradeMenu(Runnable):
             elif self.entered:
                 self.selecting = False
                 curr.set_color(self.device_io.display.display.tft.GREEN)
+                prev_val = curr.value
                 self.entered = False
+            elif self.cancelled:
+                self.selecting = True
+                self.cancelled = False
+                self.delta = 0
+                curr.update(prev_val)
+                curr.set_color(self.device_io.display.display.tft.YELLOW)
+                self.prev_select = (self.select_left, self.select_bottom)
             elif self.delta != 0:
                 # TODO: do upgrade
-                curr.value += self.delta
+                if curr.update(curr.value + self.delta) != 0:
+                    curr.shake()
             l.render()
             await asyncio.sleep(0.1)
 
