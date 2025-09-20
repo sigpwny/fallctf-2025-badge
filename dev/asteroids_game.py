@@ -371,6 +371,11 @@ class GameServer:
             self.send_raw_msg_func(msg)
 
     def raw_msg_from_client(self, raw_data):
+        if raw_data == b'GAME_OVER':
+            self.running = False
+            self.send_raw_msg(b'GAME_OVER')
+            return
+
         if not self.initialized:
             return
 
@@ -639,6 +644,9 @@ class AsteroidsGameClient(Runnable):
         Receive message from wifi and pass to client
         """
         self.last_recv_time = time.ticks_ms()
+        if msg == b'GAME_OVER' and not self.game_over:
+            self.end_game()
+            return
         self.world.update_from_server(msg)
 
     def _update(self):
@@ -687,6 +695,7 @@ class AsteroidsGameClient(Runnable):
 
     def end_game(self):
         self.game_over = True
+        self.world.raw_msg_server_func(b'GAME_OVER')
 
     async def run(self):
         self.device_io.joystick.subscribe(self._joystick_event, events=['xy'])
@@ -733,10 +742,10 @@ class AsteroidsGameClient(Runnable):
                     updates()
                 )
 
-        await self._end_game_screen()
-
         self.device_io.joystick.unsubscribe(self._joystick_event, events=['xy'])
         self.device_io.buttons.unsubscribe(self._button_event, events=['a', 'b'])
+
+        await self._end_game_screen()
 
 
 class AsteroidsGameServerAndClient(Runnable):
