@@ -238,12 +238,16 @@ class PBar(View):
         self.shake_notice = 0
 
     def update(self, value):
-        self.value = value
+        if 0 <= value <= self.capacity:
+            self.value = value
+            return 0
+        else:
+            return -1
     
     def set_color(self, color):
         self.fg_color = color
 
-    def shake(self, color=None, time=5):
+    def shake(self, color=None, time=2):
         if color is not None:
             self.shake_color = color
         self.shake_notice = time

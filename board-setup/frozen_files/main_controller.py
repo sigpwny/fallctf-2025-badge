@@ -5,6 +5,7 @@ import wireless
 from connect import ConnectMenu
 from upgrade import UpgradeMenu
 from settings import SettingsMenu
+from intro_screen import IntroScreen
 
 from logger import log
 
@@ -19,6 +20,12 @@ class MainController:
 
     async def run(self):
         log('MainController started')
+        if self.device_io.ship_stats.show_intro:
+            await IntroScreen(self.device_io).run()
+        self.device_io.ship_stats.show_intro = 0
+        self.device_io.ship_stats.save()
+
+        log('MainController main loop')
         while True:
             await ImageMenu(
                 self.device_io,

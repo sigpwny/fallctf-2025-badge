@@ -18,6 +18,7 @@ files=(
     factions.py
     flag_manager.py
     invaders_game.py
+    intro_screen.py
     joystick.py
     layout.py
     logger.py
