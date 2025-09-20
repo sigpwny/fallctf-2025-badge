@@ -31,7 +31,7 @@ for f in *.py; do
 done
 
 mpremote $mpremote_connect mkdir :assets 2>/dev/null || true
-for f in assets/*; do
+for f in assets/*.raw; do
     if [ -f "$f" ]; then
         echo "Transferring $f"
         mpremote $mpremote_connect cp "$f" :assets/
