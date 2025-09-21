@@ -79,7 +79,7 @@ class Display:
         self.line_height = 10  # Approximate line height for text
         self.char_width = 8  # Approximate character width for text
 
-        self.display.set_backlight(0.2)
+        self.display.set_backlight(0.4)
 
     def clear(self):
         self.display.clear()

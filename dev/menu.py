@@ -241,7 +241,7 @@ class HomeMenu(Runnable):
             with open(path, 'rb') as f:
                 length = f.readinto(global_buffer)
                 bitmap = (global_buffer, width, height, framebuf.RGB565)
-                # self.device_io.display.display.blit(bitmap, x, y, 0)
+                self.device_io.display.display.blit(bitmap, x, y, 0)
 
         for i in range(self.NUM_ITEMS):
             self.draw_text(50, 12 + i * 30, self.labels[i], large_font=(i == self.select_idx))
@@ -262,7 +262,7 @@ class HomeMenu(Runnable):
         with open(path, 'rb') as f:
             length = f.readinto(global_buffer)
             bitmap = (global_buffer, width, height, framebuf.RGB565)
-            # self.device_io.display.display.blit(bitmap, x, y, 0)
+            self.device_io.display.display.blit(bitmap, x, y, 0)
 
         # draw new big text
         self.device_io.display.display.rect(50, 12 + self.select_idx * 30, 100, 30, 0, True)
@@ -282,7 +282,7 @@ class HomeMenu(Runnable):
         with open(path, 'rb') as f:
             length = f.readinto(global_buffer)
             bitmap = (global_buffer, width, height, framebuf.RGB565)
-            # self.device_io.display.display.blit(bitmap, x, y, 0)
+            self.device_io.display.display.blit(bitmap, x, y, 0)
 
         # draw new big text
         self.device_io.display.display.rect(50, 12 + self.last_select_idx * 30, 100, 30, 0, True)

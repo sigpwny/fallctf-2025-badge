@@ -74,18 +74,20 @@ class ShipStats:
                 log('No save file found, starting new game', level='prod')
         except Exception as e:
             log(e, level='prod')
-        # try:
-        #     self.load_file('save2.txt')
-        #     return
-        # except OSError as e:
-        #     if e.errno != errno.ENOENT:
-        #         raise
-        # except Exception as e:
-        #     log(e, level='prod')
+        # second save file for redundancy (e.g. power lost while saving)
+        try:
+            self.load_file('save2.txt')
+            return
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+        except Exception as e:
+            log(e, level='prod')
 
     def save(self) -> None:
         self.save_file('save1.txt')
-        # self.save_file('save2.txt')
+        # second save file for redundancy (e.g. power lost while saving)
+        self.save_file('save2.txt')
 
     def get_battle_stats(self) -> BattleStats:
         return BattleStats(
@@ -121,7 +123,7 @@ class ShipStats:
 
     def upgrade(self, stat: str, pts_delta=1) -> bool:
         if self.stardust >= self.cost_to_upgrade(pts_delta=pts_delta):
-            self.stardust -= self.cost_to_upgrade()
+            self.stardust -= self.cost_to_upgrade(pts_delta=pts_delta)
             self.stats[stat] += pts_delta
             self.save()
             return True
@@ -131,4 +133,7 @@ class ShipStats:
     def cost_to_upgrade(self, pts_delta=1) -> int:
         '''Returns the amount of stardust needed to upgrade from the given level'''
         levels = sum(self.stats.values())
-        return (10 * pts_delta + levels) ** 2
+        cost = 0
+        for i in range(pts_delta):
+            cost += (10 + i + levels) ** 2
+        return cost

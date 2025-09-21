@@ -182,7 +182,7 @@ class HomeMenu(Runnable):
         self.keep_running = True
         self.labels = ['CONNECT', 'UPGRADE', 'MORE', 'SETTINGS']
         planets = ['sun', 'earth', 'moon', 'uranus']
-        self.big_planet_paths = [f'assets/{p}_big.raw' for p in planets]
+        self.big_planet_paths = [f'assets/{p}_large.raw' for p in planets]
         self.small_planet_paths = [f'assets/{p}_small.raw' for p in planets]
 
         self.small_font = MicroFont('assets/comic_sans:B:14.mfnt', cache_index=True, cache_chars=True)

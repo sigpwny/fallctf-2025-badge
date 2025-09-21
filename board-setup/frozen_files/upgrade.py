@@ -267,8 +267,14 @@ class UpgradeMenu(Runnable):
                     curr.shake()
                 else:
                     text_updater(curr.value - prev_val)
+                self.delta = 0 # reset so it doesn't keep incrementing/decrementing
             l.render()
             await asyncio.sleep(0.1)
+
+        self.device_io.joystick.unsubscribe(
+            self.joystick_event, events=["up-down", "left-right"]
+        )
+        self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
 
     # def confirm(self):
     #     self.keep_running = False
