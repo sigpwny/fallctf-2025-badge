@@ -36,4 +36,4 @@ while True:
     for path in to_remove:
         flashing.remove(path)
 
-    time.sleep(1)
+    time.sleep(3)

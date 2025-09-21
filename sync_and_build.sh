@@ -11,5 +11,5 @@ cd ../micropython/ports/esp32/
 make BOARD=ESP32_GENERIC_S2 FROZEN_MANIFEST=../../../../../../board-setup/frozen_files/manifest.py 
 cp build-ESP32_GENERIC_S2/firmware.bin ../../../board-setup
 
-cd ../../../board-setup
-python -m esptool --after no_reset write_flash 0x1000 firmware.bin
+# cd ../../../board-setup
+# python -m esptool --after no_reset write_flash 0x1000 firmware.bin
