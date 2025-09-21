@@ -31,13 +31,14 @@ while True:
                 flashing.add(path)
                 threading.Thread(target=flash_board, args=[path]).start()
 
-    to_remove = []
-    for path in connected:
-        if not os.path.exists(path):
-            print(f'no longer detected {path}')
-            to_remove.append(path)
-    for path in to_remove:
-        connected.remove(path)
+    # for some reason, after flashing, it disappears from /dev/ and then reappears, so have to manually restart script
+    # to_remove = []
+    # for path in connected:
+    #     if not os.path.exists(path):
+    #         print(f'no longer detected {path}')
+    #         to_remove.append(path)
+    # for path in to_remove:
+    #     connected.remove(path)
 
     print(f'still flashing: {flashing}')
     time.sleep(1)
