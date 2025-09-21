@@ -2,7 +2,7 @@ import asyncio
 import framebuf
 
 from microfont import MicroFont
-from view import BasicTextView
+from view import BasicTextView, global_buffer
 from layout import ComplexLayout, Style
 from logger import log
 
@@ -316,9 +316,6 @@ class HomeMenu(Runnable):
                 await action
             else:
                 raise ValueError("Action is neither Runnable nor callable nor awaitable")
-
-
-global_buffer = bytearray(HomeMenu.MAX_IMAGES_SIZE)
 
 
 async def menu_with_text(device_io: 'DeviceIO', text_list: list[str], menu_items: list['MenuItem'], cancel_event=None, exit_on_b_handler=None):

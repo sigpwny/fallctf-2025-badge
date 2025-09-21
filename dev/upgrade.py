@@ -63,6 +63,8 @@ class UpgradeMenu(Runnable):
         l[0][0].update(1, f"Cost: {self.device_io.ship_stats.cost_to_upgrade(pts)}")
 
     async def run(self):
+        import gc; gc.collect(); import micropython; micropython.mem_info()
+
         self.device_io.joystick.subscribe(
             self.joystick_event, events=["up-down", "left-right"]
         )
@@ -157,7 +159,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[0]],
                     width=28,
                     text_mode=2,
@@ -168,7 +170,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[1]],
                     width=28,
                     text_mode=2,
@@ -185,7 +187,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[2]],
                     width=28,
                     text_mode=2,
@@ -195,7 +197,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[3]],
                     width=28,
                     text_mode=2,
