@@ -121,7 +121,7 @@ class ShipStats:
 
     def upgrade(self, stat: str, pts_delta=1) -> bool:
         if self.stardust >= self.cost_to_upgrade(pts_delta=pts_delta):
-            self.stardust -= self.cost_to_upgrade()
+            self.stardust -= self.cost_to_upgrade(pts_delta=pts_delta)
             self.stats[stat] += pts_delta
             self.save()
             return True
@@ -131,4 +131,7 @@ class ShipStats:
     def cost_to_upgrade(self, pts_delta=1) -> int:
         '''Returns the amount of stardust needed to upgrade from the given level'''
         levels = sum(self.stats.values())
-        return (10 * pts_delta + levels) ** 2
+        cost = 0
+        for i in range(pts_delta):
+            cost += (10 + i + levels) ** 2
+        return cost
