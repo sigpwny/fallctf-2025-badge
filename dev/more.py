@@ -58,7 +58,7 @@ class MoreMenu(Runnable):
                             'helped on the badge:',
                             '',
                             'Richard Liu (@rliu)',
-                            '@32121',
+                            'Juniper (@32121)',
                             'Cygnus [ikuyo.dev]',
                             '@hackoverflow',
                             '@why0377',
