@@ -186,6 +186,11 @@ class FontTextView(View):
         )
 
 
+def bitMapViewFromFile(display, file_path, width, height, x=0, y=0, **kwargs):
+    with open(file_path, "rb") as f:
+        bitmap = bytearray(f.read())
+    return BitMapView(display, bitmap, width, height, x, y, **kwargs)
+
 class BitMapView(View):
     def __init__(
         self,
@@ -248,7 +253,7 @@ class BitMapView(View):
             #     for px in range(self.width):
             #         pixel = self.bitmap.pixel(px, py)
             #         self.display.display.pixel(self.x + px, self.y + py, pixel)
-            self.display.display.blit(self.bitmap, self.x, self.y, -1)
+            self.display.display.blit(self.bitmap, self.x, self.y)
         else:
             self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
 
