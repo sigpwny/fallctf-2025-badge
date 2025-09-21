@@ -14,26 +14,31 @@ def flash_board(path):
         print(f'flashing {path} (stdout,stderr > {f.name})')
         p = subprocess.Popen([SCRIPT, path], stdout=f, stderr=f, bufsize=0)
         p.wait()
+        flashing.remove(path)
         print(f'done flashing {path}')
 
 
+connected = set()
 flashing = set()
 
 while True:
     for file in os.listdir('/dev'):
         if file.startswith('cu.usb'):
             path = os.path.join('/dev', file)
-            if path not in flashing:
+            if path not in connected:
                 print(f'detected {path}')
+                connected.add(path)
                 flashing.add(path)
                 threading.Thread(target=flash_board, args=[path]).start()
 
-    to_remove = []
-    for path in flashing:
-        if not os.path.exists(path):
-            print(f'no longer detected {path}')
-            to_remove.append(path)
-    for path in to_remove:
-        flashing.remove(path)
+    # for some reason, after flashing, it disappears from /dev/ and then reappears, so have to manually restart script
+    # to_remove = []
+    # for path in connected:
+    #     if not os.path.exists(path):
+    #         print(f'no longer detected {path}')
+    #         to_remove.append(path)
+    # for path in to_remove:
+    #     connected.remove(path)
 
-    time.sleep(3)
+    print(f'still flashing: {flashing}')
+    time.sleep(1)

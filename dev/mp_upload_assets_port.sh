@@ -13,7 +13,7 @@ mpremote connect $PORT cp main.py :
 mpremote connect $PORT mkdir :assets 2>/dev/null || true
 for f in assets/*; do
     # skip .png
-    if [ -f "$f" ] && [[ "$f" != *.png ]]; then
+    if [ -f "$f" ] && [[ "$f" == *.raw || "$f" == *.mfnt ]]; then
         echo "Transferring $f"
         mpremote connect $PORT cp "$f" :assets/
     fi
