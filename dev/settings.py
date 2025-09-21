@@ -82,7 +82,18 @@ class SettingsMenu(Runnable):
             menu_options = [
                 ("back", None, lambda: setattr(self, "_go_back", True)),
                 ("Test speaker", None, lambda: self.device_io.speaker.success_sound()),
-                (f"Battery: {battery}%", None, lambda: None),
+                (
+                    f"Battery: {battery}%",
+                    None,
+                    menu_with_text_runnable(
+                        self.device_io,
+                        [
+                            f'Voltage: {self.device_io.power.read_battery_voltage():.3f} V',
+                            f'Power draw: {self.device_io.power.get_power_draw():.0f} mW',
+                        ],
+                        [('Ok', None, lambda: None)]
+                    )
+                ),
                 ("Flags", None, FlagsMenu(self.device_io)),
                 (f"MAC: {self.device_io.wireless.my_mac().hex()}", None, lambda: None),
                 (

@@ -103,6 +103,10 @@ class Wireless:
         while True:
             if self.is_active:
                 host, msg = await self.esp.airecv()
+                if host is None:
+                    # could be None if timeout
+                    await asyncio.sleep_ms(1)
+                    continue
                 if host in self.esp.peers_table:
                     rssi = self.esp.peers_table[host][0]
                 else:
