@@ -446,6 +446,43 @@ class GameServer:
                 self.broadcast_update(BroadcastUpdate.END_GAME)
 
 
+def _line_boundary_intersection(a, b, v):
+    """
+    Checks for intersection between a line between 'a' and 'b' and a horizontal or vertical line.
+
+    One of the two values in 'v' must be None, which indicates the
+    free varying parameter. Returns the point along the line between a
+    and b that intersects v (has the same value as one of the parameters)
+
+    Returns the point if it exists on the line or None.
+    """
+
+    if (v[0] == None) == (v[1] == None):
+        # both None or both non-None: invalid
+        return None
+
+    if v[1] == None:
+        # swap all values
+        a0, a1 = a
+        b0, b1 = b
+        v0, v1 = v
+        o0, o1 = _line_boundary_intersection((a1, a0), (b1, b0), (v1, v0))
+        return o1, o0
+
+    # the line can be parameterized by t as: f(t) = a + t*(b - a)
+    # solve for t
+    if b[1] - a[1] < 1e-3:
+        return None
+    t = (v[1] - a[1]) / (b[1] - a[1])
+    if t < 0 or t > 1:
+        # on the same line, but not between a and b
+        return None
+    # use t to calculate the missing part of the point
+    v0 = a[0] + t * (b[0] - a[0])
+
+    return (v0, v[1])
+
+
 class GameClient:
     CLIENT_UPDATE_INTERVAL_MS = 200
 
@@ -588,6 +625,9 @@ class GameClient:
         log(f'Firing missile with damage {scaled_damage:.1f}!')
         msg = bytearray([self.client_id, ClientUpdate.FIRE_MISSILE, int(scaled_damage)])
         self.raw_msg_server_func(msg)
+
+    def draw_offscreen_indicator(self, point, color):
+        pass
 
     def draw(self, display):
         # background

@@ -1,7 +1,8 @@
 import esp32
 
-from menu import Runnable, ListMenu
+from menu import Runnable, ListMenu, menu_with_text_runnable
 from flag_manager import FlagsMenu
+from build_info import BUILD_TIME
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
@@ -83,6 +84,16 @@ class SettingsMenu(Runnable):
                 ("Test speaker", None, lambda: self.device_io.speaker.success_sound()),
                 (f"Battery: {battery}%", None, lambda: None),
                 ("Flags", None, FlagsMenu(self.device_io)),
+                (f"MAC: {self.device_io.wireless.my_mac().hex()}", None, lambda: None),
+                (
+                    f"Build: {BUILD_TIME[-9:]}",
+                    None,
+                    menu_with_text_runnable(
+                        self.device_io,
+                        [BUILD_TIME],
+                        [('Ok', None, lambda: None)]
+                    )
+                ),
             ]
             for setting in self.device_io.persist.boolean_settings:
                 current_value = self.device_io.persist.get_boolean(setting)

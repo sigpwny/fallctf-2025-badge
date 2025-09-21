@@ -3,7 +3,7 @@
 from PIL import Image
 import struct, os
 
-FULL_SCREEN_LIST = ["first_page_1.png", "first_page_2.png", "first_page_3.png"]
+FULL_SCREEN_LIST = ["first_page_1.png", "first_page_2.png", "first_page_3.png", "sponsors.png"]
 
 def convert_fullscreen(image_path):
     # Open the image using PIL
