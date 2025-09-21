@@ -59,7 +59,7 @@ class MoreMenu(Runnable):
                             '',
                             'Richard Liu (@rliu)',
                             '@32121',
-                            '@e_ritque.arcus',
+                            'Cygnus [ikuyo.dev]',
                             '@hackoverflow',
                             '@why0377',
                         ],
