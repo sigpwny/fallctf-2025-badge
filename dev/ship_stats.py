@@ -74,18 +74,20 @@ class ShipStats:
                 log('No save file found, starting new game', level='prod')
         except Exception as e:
             log(e, level='prod')
-        # try:
-        #     self.load_file('save2.txt')
-        #     return
-        # except OSError as e:
-        #     if e.errno != errno.ENOENT:
-        #         raise
-        # except Exception as e:
-        #     log(e, level='prod')
+        # second save file for redundancy (e.g. power lost while saving)
+        try:
+            self.load_file('save2.txt')
+            return
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+        except Exception as e:
+            log(e, level='prod')
 
     def save(self) -> None:
         self.save_file('save1.txt')
-        # self.save_file('save2.txt')
+        # second save file for redundancy (e.g. power lost while saving)
+        self.save_file('save2.txt')
 
     def get_battle_stats(self) -> BattleStats:
         return BattleStats(
