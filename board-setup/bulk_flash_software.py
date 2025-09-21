@@ -4,12 +4,13 @@ import subprocess
 import threading
 
 SCRIPT = './flash_software.sh'
+OUTPUT_PRE = 'flash_software'
 
 os.makedirs('output', exist_ok=True)
 
 
 def flash_board(path):
-    with open(os.path.join('output', f'flash_firmware_{path.replace('/', '_')}.out'), 'wb') as f:
+    with open(os.path.join('output', f'{OUTPUT_PRE}_{path.replace('/', '_')}.out'), 'wb') as f:
         print(f'flashing {path} (stdout,stderr > {f.name})')
         p = subprocess.Popen([SCRIPT, path], stdout=f, stderr=f, bufsize=0)
         p.wait()
