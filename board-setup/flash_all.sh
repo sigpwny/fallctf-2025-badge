@@ -20,3 +20,6 @@ sleep 2
 cd ../dev
 ./mp_upload_assets.sh
 mpremote cp build_for_release/src.zip :
+mpremote cp build_for_release/README.md :
+sleep 1
+mpremote reset

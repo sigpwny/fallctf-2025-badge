@@ -466,12 +466,15 @@ def _line_boundary_intersection(a, b, v):
         a0, a1 = a
         b0, b1 = b
         v0, v1 = v
-        o0, o1 = _line_boundary_intersection((a1, a0), (b1, b0), (v1, v0))
+        res = _line_boundary_intersection((a1, a0), (b1, b0), (v1, v0))
+        if res is None:
+            return None
+        o0, o1 = res
         return o1, o0
 
     # the line can be parameterized by t as: f(t) = a + t*(b - a)
     # solve for t
-    if b[1] - a[1] < 1e-3:
+    if abs(b[1] - a[1]) < 1e-3:
         return None
     t = (v[1] - a[1]) / (b[1] - a[1])
     if t < 0 or t > 1:
@@ -504,6 +507,8 @@ class GameClient:
         self.raw_msg_server_func = None
         self.last_send_move_update = time.ticks_ms()
         self.remaining_time = 60 * 1000
+        self.last_updated_nearest_star = time.ticks_ms()  # for offscreen indicator
+        self.nearest_star = None
 
     def update(self, joystick_x, joystick_y, dt):
         vel_change = joystick_y * JOYSTICK_VEL_SCALE * (1 + 0.2 * self.ship_stats.stats['thrusters'])
@@ -626,8 +631,33 @@ class GameClient:
         msg = bytearray([self.client_id, ClientUpdate.FIRE_MISSILE, int(scaled_damage)])
         self.raw_msg_server_func(msg)
 
-    def draw_offscreen_indicator(self, point, color):
-        pass
+    def draw_offscreen_indicator(self, display, point, color):
+        inner_boundary = (10, 15, 150, 115)  # x0, y0, x1, y1
+        pt = self.my_ship.apply_view_around_ship(point[0], point[1])
+        ship = (self.my_ship.screen_x, self.my_ship.screen_y)
+
+        top = _line_boundary_intersection(ship, pt, (None, inner_boundary[1]))
+        bottom = _line_boundary_intersection(ship, pt, (None, inner_boundary[3]))
+        left = _line_boundary_intersection(ship, pt, (inner_boundary[0], None))
+        right = _line_boundary_intersection(ship, pt, (inner_boundary[2], None))
+        intersections = [p for p in (top, bottom, left, right) if p is not None and inner_boundary[0] <= p[0] <= inner_boundary[2] and inner_boundary[1] <= p[1] <= inner_boundary[3]]
+        if len(intersections) == 0:
+            return
+        if len(intersections) > 1:
+            log('Multiple intersections found for offscreen indicator, using the first one', level='prod')
+        x, y = intersections[0]
+        x = int(x)
+        y = int(y)
+
+        # draw a triangle pointing towards the point
+        angle = math.atan2(pt[1] - ship[1], pt[0] - ship[0])
+        size = 4
+        arr = array('h', [
+            int(x + math.cos(angle) * size), int(y + math.sin(angle) * size),
+            int(x + math.cos(angle + 2.5) * size), int(y + math.sin(angle + 2.5) * size),
+            int(x + math.cos(angle - 2.5) * size), int(y + math.sin(angle - 2.5) * size),
+        ])
+        display.poly(0, 0, arr, color, True)
 
     def draw(self, display):
         # background
@@ -655,9 +685,19 @@ class GameClient:
         for star in self.stars:
             star.draw(display.display, self.my_ship.apply_view_around_ship)
 
+        # offscreen indicators for nearest star
+        if len(self.stars) > 0 and time.ticks_diff(time.ticks_ms(), self.last_updated_nearest_star) > 500:
+            self.nearest_star = min(self.stars, key=lambda s: (s.x - self.my_ship.x) ** 2 + (s.y - self.my_ship.y) ** 2)
+            self.last_updated_nearest_star = time.ticks_ms()
+        if len(self.stars) > 0 and self.nearest_star is not None:
+            self.draw_offscreen_indicator(display.display, (self.nearest_star.x, self.nearest_star.y), TFT.YELLOW)
+
         # other ship
         if self.other_ship is not None:
             self.other_ship.draw_other(display.display, self.my_ship.apply_view_around_ship)
+            dist = (math.sqrt((self.other_ship.x - self.my_ship.x) ** 2 + (self.other_ship.y - self.my_ship.y) ** 2))
+            if dist < self.ship_stats.stats['sensors'] * 10 + 120:
+                self.draw_offscreen_indicator(display.display, (self.other_ship.x, self.other_ship.y), TFT.CYAN)
 
         # ship
         self.my_ship.draw(display.display)
@@ -724,10 +764,11 @@ class AsteroidsGameClient(Runnable):
     async def _end_game_screen(self):
         health_bonus = int(max(0, self.world.my_ship.max_health - self.world.my_ship.damage) * 0.75)
         total_stardust = self.world.my_ship.stardust + health_bonus
-        self.device_io.ship_stats.add_stardust(total_stardust)
         msgs = ['Game Over', '', f'Stardust found: {self.world.my_ship.stardust}', f'Health bonus: {health_bonus}', f'Total: {total_stardust}']
         if self.freeplay:
             msgs += [f'(not added to total', 'in freeplay mode)']
+        else:
+            self.device_io.ship_stats.add_stardust(total_stardust)
         await menu_with_text(
             self.device_io,
             msgs,
