@@ -7,7 +7,8 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     from display import Display
 
-global_buffer = bytearray(34*42*2)
+global_buffer = bytearray(34 * 42 * 2)
+
 
 class View:
     _changed = True
@@ -63,7 +64,7 @@ class BasicTextView(View):
     def __init__(self, display, lines=[], shake_color=None):
         super().__init__(display)
         self.max_line = self.display.height // self.display.line_height
-        self.lines = lines[:self.max_line]
+        self.lines = lines[: self.max_line]
         if shake_color is None:
             self.shake_color = self.display.display.tft.RED
         else:
@@ -99,7 +100,10 @@ class BasicTextView(View):
             self.shake_notice -= 1
             # hacky way to make sure it continue rendering for next tick
             self._changed = True
-            color = self.shake_color
+            if self.shake_notice != 0:
+                color = self.shake_color
+            else:
+                color = 0xFFFF
         else:
             color = 0xFFFF
         for i, line in enumerate(self.lines):
@@ -193,6 +197,7 @@ def bitMapViewFromFile(display, file_path, width, height, x=0, y=0, **kwargs):
     #     bitmap = bytearray(f.read())
     return BitMapView(display, None, width, height, x, y, filename=file_path, **kwargs)
 
+
 class BitMapView(View):
     def __init__(
         self,
@@ -251,7 +256,9 @@ class BitMapView(View):
             with open(self.filename, "rb") as f:
                 global global_buffer
                 f.readinto(global_buffer)
-                bitmap = FrameBuffer(global_buffer, self.width, self.height, self.format)
+                bitmap = FrameBuffer(
+                    global_buffer, self.width, self.height, self.format
+                )
         else:
             bitmap = self.bitmap
         if self.format == RGB565:
@@ -370,7 +377,10 @@ class PBar(View):
         # default theme like a health bar with border. If shake_notice > 0, draw a red border
         if self.shake_notice > 0:
             self.shake_notice -= 1
-            border_color = self.shake_color
+            if self.shake_notice != 0:
+                border_color = self.shake_color
+            else:
+                border_color = self.fg_color
             # hacky way to make sure it continue rendering for next tick
             self._changed = True
         else:
