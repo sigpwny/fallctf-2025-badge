@@ -267,6 +267,7 @@ class UpgradeMenu(Runnable):
                     curr.shake()
                 else:
                     text_updater(curr.value - prev_val)
+                self.delta = 0 # reset so it doesn't keep incrementing/decrementing
             l.render()
             await asyncio.sleep(0.1)
 
