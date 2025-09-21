@@ -24,8 +24,8 @@ class View:
 
     def __setattr__(self, key, value):
         object.__setattr__(self, key, value)
-        if not self._changed:
-            self._changed = True
+        if not self._changed and key != "_changed":
+            object.__setattr__(self, "_changed", True)
 
     def render(self):
         pass
@@ -49,7 +49,7 @@ class View:
                 self.render_x_y(x, y)
                 self._cache_x_y = (x, y)
                 self._cache_w_h = self.get_width_height()
-                self._changed = False
+            self._changed = False
 
     def get_width_height(self) -> tuple[int, int]:
         return 0, 0
@@ -248,6 +248,7 @@ class BitMapView(View):
     def render(self):
         super().render()
         if self.format == RGB565:
+            log("BitMapView: RGB565 blit")
             # # write into self.display.display.buffer directly
             # for py in range(self.height):
             #     for px in range(self.width):
