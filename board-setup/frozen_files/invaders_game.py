@@ -9,8 +9,6 @@ from view import BasicTextView, View
 from layout import ComplexLayout, Style
 from ST7735 import TFT
 
-from logger import log
-
 TYPE_CHECKING = False
 if TYPE_CHECKING:
     from device_io import DeviceIO
@@ -130,22 +128,17 @@ class InvadersGame(Runnable):
                 await asyncio.sleep(0.1)
                 continue
             # the higher the score, the more likely to spawn harder enemies
-            # if random.randint(0, self.score // 10) == 0:
-            #     self.enemies.append((random.random() * width, hud_height, 0, 0, FOLLOWER_ENEMY))
-            # elif random.randint(0, self.score // 20) == 0:
-            #     self.enemies.append((random.random() * width, hud_height, 0, 0, PREDICTOR_ENEMY))
-            # else:
-            #     self.enemies.append((random.random() * width, hud_height, 0, 0, MOMENTUM_ENEMY))
+            if random.randint(0, self.score // 10) == 0:
+                self.enemies.append((random.random() * width, hud_height, 0, 0, FOLLOWER_ENEMY))
+            elif random.randint(0, self.score // 20) == 0:
+                self.enemies.append((random.random() * width, hud_height, 0, 0, PREDICTOR_ENEMY))
+            else:
+                self.enemies.append((random.random() * width, hud_height, 0, 0, MOMENTUM_ENEMY))
             await asyncio.sleep(1)
 
     def accel_event(self, event, xyz):
         self.move_x = xyz['x'] * PLAYER_SPEED * -1
-        log(xyz)
-        z = xyz['z']
-        z += 0.8
-        # if z > 1:
-        #     z -= 2
-        self.move_y = z * PLAYER_SPEED * -1
+        self.move_y = xyz['y'] * PLAYER_SPEED * -1
 
     def joystick_event(self, event, xy):
         if self.paused:
