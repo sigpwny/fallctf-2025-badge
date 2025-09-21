@@ -58,8 +58,8 @@ class MoreMenu(Runnable):
                             'helped on the badge:',
                             '',
                             'Richard Liu (@rliu)',
-                            '@32121',
-                            '@e_ritque.arcus',
+                            'Juniper (@32121)',
+                            'Cygnus [ikuyo.dev]',
                             '@hackoverflow',
                             '@why0377',
                         ],
@@ -94,6 +94,5 @@ class MoreMenu(Runnable):
                 menu_options,
                 init_selected=0 if menu is None else menu.select_idx,
                 exit_on_b_handler=lambda: setattr(self, "_go_back", True),
-                enable_render_cache=True,
             )
             await menu.run()

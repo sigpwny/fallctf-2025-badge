@@ -1,4 +1,4 @@
-from view import FontTextView, BitMapView
+from view import FontTextView, bitMapViewFromFile
 from layout import ComplexLayout, Style
 from logger import log
 import time
@@ -27,9 +27,16 @@ def boot_screen(display, font_path="assets/monospaceKrypton_24.mfnt"):
             Style(posType=0b00, x=5, y=40),
         ),
         (
-            BitMapView(
+            # BitMapView(
+            #     display,
+            #     bytearray(logo_data),
+            #     width=64,
+            #     height=64,
+            #     fg_color=display.display.tft.GREEN,
+            # ),
+            bitMapViewFromFile(
                 display,
-                bytearray(logo_data),
+                "assets/logo.raw",
                 width=64,
                 height=64,
                 fg_color=display.display.tft.GREEN,

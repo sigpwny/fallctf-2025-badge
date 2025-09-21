@@ -1,6 +1,6 @@
-from menu import Runnable, menu_with_text
+from menu import Runnable
 from ST7735 import TFTColor
-from view import PBar, BasicTextView, BitMapView, UnboxedLine
+from view import PBar, BasicTextView, UnboxedLine, bitMapViewFromFile
 from layout import Style, ComplexLayout
 import asyncio
 
@@ -58,15 +58,13 @@ class UpgradeMenu(Runnable):
             else:
                 self.state = CANCELLING
 
+    def text_updater(self, l, pts):
+        l[0][0].update(0, f"StarDust: {self.device_io.ship_stats.stardust}")
+        l[0][0].update(1, f"Cost: {self.device_io.ship_stats.cost_to_upgrade(pts)}")
+
     async def run(self):
-        with open("assets/shield_small.raw", "rb") as f:
-            shield_img = bytearray(f.read())
-        with open("assets/weapons_small.raw", "rb") as f:
-            weapon_img = bytearray(f.read())
-        with open("assets/thrusters_small.raw", "rb") as f:
-            thruster_img = bytearray(f.read())
-        with open("assets/sensors_small.raw", "rb") as f:
-            sensor_img = bytearray(f.read())
+        import gc; gc.collect(); import micropython; micropython.mem_info()
+
         self.device_io.joystick.subscribe(
             self.joystick_event, events=["up-down", "left-right"]
         )
@@ -84,13 +82,9 @@ class UpgradeMenu(Runnable):
         #     await menu_with_text(self.device_io, [f'StarDust: {self.device_io.ship_stats.stardust}', f'Cost: {self.device_io.ship_stats.cost_to_upgrade()}', self.last_msg], items, exit_on_b_handler=self.cancel)
 
         # maybe GUI?
-        self.device_io.ship_stats.load()
+        # self.device_io.ship_stats.load()
 
         self.prev_select = 0
-        # by python3 -c "from PIL import Image; import struct; img=Image.open('ship.png').convert('RGB'); open('ship.raw','wb').write(b''.join(struct.pack('>H',((r&0xF8)<<8)|((g&0xFC)<<3)|(b>>3)) for y in range(img.height) for x in range(img.width) for r,g,b in [img.getpixel((x,y))]))"
-        with open("assets/ship.raw", "rb") as f:
-            ship_img = bytearray(f.read())
-
         start_idx = 13
         inputs_idx = [start_idx, start_idx + 1, start_idx + 3, start_idx + 4]
         start_idx = 5
@@ -126,7 +120,8 @@ class UpgradeMenu(Runnable):
                 Style(posType=0b00, x=0, y=0),
             ),
             (
-                BitMapView(self.device_io.display, weapon_img, 23, 20, format=1),
+                # BitMapView(self.device_io.display, weapon_img, 23, 20, format=1),
+                bitMapViewFromFile(self.device_io.display, "assets/weapons_small.raw", 23, 20, format=1),
                 Style(posType=0b00, x=5, y=35),
             ),
             (
@@ -134,7 +129,8 @@ class UpgradeMenu(Runnable):
                 Style(posType=0b10, x=5, y=35)
             ),
             (
-                BitMapView(self.device_io.display, shield_img, 17, 20, format=1),
+                # BitMapView(self.device_io.display, shield_img, 17, 20, format=1),
+                bitMapViewFromFile(self.device_io.display, "assets/shield_small.raw", 17, 20, format=1),
                 Style(posType=0b00, x=105, y=35),
             ),
             (
@@ -142,7 +138,8 @@ class UpgradeMenu(Runnable):
                 Style(posType=0b10, x=5, y=35)
             ),
             (
-                BitMapView(self.device_io.display, thruster_img, 16, 20, format=1),
+                # BitMapView(self.device_io.display, thruster_img, 16, 20, format=1),
+                bitMapViewFromFile(self.device_io.display, "assets/thrusters_small.raw", 16, 20, format=1),
                 Style(posType=0b00, x=5, y=105),
             ),
             (
@@ -150,7 +147,8 @@ class UpgradeMenu(Runnable):
                 Style(posType=0b10, x=5, y=105)
             ),
             (
-                BitMapView(self.device_io.display, sensor_img, 19, 19, format=1),
+                # BitMapView(self.device_io.display, sensor_img, 19, 19, format=1),
+                bitMapViewFromFile(self.device_io.display, "assets/sensors_small.raw", 19, 19, format=1),
                 Style(posType=0b00, x=105, y=105),
             ),
             (
@@ -161,7 +159,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[0]],
                     width=28,
                     text_mode=2,
@@ -172,7 +170,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[1]],
                     width=28,
                     text_mode=2,
@@ -180,13 +178,16 @@ class UpgradeMenu(Runnable):
                 Style(posType=0b00, x=100, y=20),
             ),
             (
-                BitMapView(self.device_io.display, ship_img, 34, 42, format=1),
+                bitMapViewFromFile(
+                    self.device_io.display, "assets/ship.raw", 34, 42, format=1
+                ),
+                # BitMapView(self.device_io.display, ship_img, 34, 42, format=1),
                 Style(posType=0b00, x=50, y=40),
             ),
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[2]],
                     width=28,
                     text_mode=2,
@@ -196,7 +197,7 @@ class UpgradeMenu(Runnable):
             (
                 PBar(
                     self.device_io.display,
-                    50,
+                    20,
                     self.device_io.ship_stats.stats[CATEGORIES[3]],
                     width=28,
                     text_mode=2,
@@ -206,11 +207,7 @@ class UpgradeMenu(Runnable):
             enable_render_cache=True,
         )
 
-        def text_updater(pts):
-            l[0][0].update(0, f"StarDust: {self.device_io.ship_stats.stardust}")
-            l[0][0].update(1, f"Cost: {self.device_io.ship_stats.cost_to_upgrade(pts)}")
-
-        text_updater(0)
+        self.text_updater(l, 0)
 
         prev_val = 0
 
@@ -237,7 +234,7 @@ class UpgradeMenu(Runnable):
                     l[0][0].shake()
                     self.state = ADJUSTING
                 else:
-                    text_updater(0)
+                    self.text_updater(l, 0)
                     l[value_text_idx[curr_select]][0].update(
                         0,
                         str(
@@ -257,7 +254,7 @@ class UpgradeMenu(Runnable):
                 self.state = ADJUSTING
             elif self.state == CANCELLING:
                 self.delta = 0
-                text_updater(0)
+                self.text_updater(l, 0)
                 curr.update(prev_val)
                 curr.set_color(self.device_io.display.display.tft.YELLOW)
                 self.prev_select = self.select_left + 2 * self.select_bottom
@@ -266,8 +263,8 @@ class UpgradeMenu(Runnable):
                 if curr.update(curr.value + self.delta) != 0:
                     curr.shake()
                 else:
-                    text_updater(curr.value - prev_val)
-                self.delta = 0 # reset so it doesn't keep incrementing/decrementing
+                    self.text_updater(l, curr.value - prev_val)
+                self.delta = 0  # reset so it doesn't keep incrementing/decrementing
             l.render()
             await asyncio.sleep(0.1)
 
@@ -275,27 +272,3 @@ class UpgradeMenu(Runnable):
             self.joystick_event, events=["up-down", "left-right"]
         )
         self.device_io.buttons.unsubscribe(self.button_event, events=["a", "b"])
-
-    # def confirm(self):
-    #     self.keep_running = False
-
-    # def cancel(self):
-    #     self.device_io.ship_stats.stardust, self.device_io.ship_stats.stats = (
-    #         self.prev_stats
-    #     )
-    #     self.keep_running = False
-
-    # def undo(self):
-    #     if self.prev_stats is not None:
-    #         self.device_io.ship_stats.save()
-    #         self.last_msg = "Undid upgrade"
-    #     self.prev_stats = None
-
-    # def upgrade_stat(self, stat: str):
-    #     def upgrade_stat():
-    #         if self.device_io.ship_stats.upgrade(stat):
-    #             self.last_msg = f"Upgraded {stat}"
-    #         else:
-    #             self.last_msg = "Not enough SD"
-
-    #     return upgrade_stat

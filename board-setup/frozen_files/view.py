@@ -7,6 +7,8 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     from display import Display
 
+global_buffer = bytearray(34 * 42 * 2)
+
 
 class View:
     _changed = True
@@ -24,8 +26,8 @@ class View:
 
     def __setattr__(self, key, value):
         object.__setattr__(self, key, value)
-        if not self._changed:
-            self._changed = True
+        if not self._changed and key != "_changed":
+            object.__setattr__(self, "_changed", True)
 
     def render(self):
         pass
@@ -49,7 +51,7 @@ class View:
                 self.render_x_y(x, y)
                 self._cache_x_y = (x, y)
                 self._cache_w_h = self.get_width_height()
-                self._changed = False
+            self._changed = False
 
     def get_width_height(self) -> tuple[int, int]:
         return 0, 0
@@ -62,7 +64,7 @@ class BasicTextView(View):
     def __init__(self, display, lines=[], shake_color=None):
         super().__init__(display)
         self.max_line = self.display.height // self.display.line_height
-        self.lines = lines[:self.max_line]
+        self.lines = lines[: self.max_line]
         if shake_color is None:
             self.shake_color = self.display.display.tft.RED
         else:
@@ -71,6 +73,7 @@ class BasicTextView(View):
 
     def update(self, index, line):
         if 0 <= index < self.max_line:
+            self._changed = True
             if index >= len(self.lines):
                 self.lines.extend([""] * (index + 1 - len(self.lines)))
             self.lines[index] = line
@@ -97,7 +100,10 @@ class BasicTextView(View):
             self.shake_notice -= 1
             # hacky way to make sure it continue rendering for next tick
             self._changed = True
-            color = self.shake_color
+            if self.shake_notice != 0:
+                color = self.shake_color
+            else:
+                color = 0xFFFF
         else:
             color = 0xFFFF
         for i, line in enumerate(self.lines):
@@ -186,6 +192,12 @@ class FontTextView(View):
         )
 
 
+def bitMapViewFromFile(display, file_path, width, height, x=0, y=0, **kwargs):
+    # with open(file_path, "rb") as f:
+    #     bitmap = bytearray(f.read())
+    return BitMapView(display, None, width, height, x, y, filename=file_path, **kwargs)
+
+
 class BitMapView(View):
     def __init__(
         self,
@@ -195,13 +207,18 @@ class BitMapView(View):
         height,
         x=0,
         y=0,
+        filename=None,
         format=MONO_HMSB,
         fg_color=None,
         bg_color=None,
     ):
         # type: (Display, bytearray, int, int, int, int, int, int|None, int|None) -> None
         super().__init__(display)
-        self.bitmap = FrameBuffer(bitmap, width, height, format)
+        if bitmap is not None:
+            self.bitmap = FrameBuffer(bitmap, width, height, format)
+        else:
+            self.bitmap = None
+        self.filename = filename
         self.x = x
         self.y = y
         self.palette = BoolPalette(RGB565)
@@ -216,24 +233,14 @@ class BitMapView(View):
         else:
             self.palette.bg(self.display.display.tft.BLACK)
         self.format = format
+        self.rendered_once = False
 
     def set_colors(self, fg_color, bg_color):
         self.palette.fg(fg_color)
         self.palette.bg(bg_color)
 
-    def update(self, bitmap, width, height, x=None, y=None, format=MONO_HMSB):
-        self.bitmap = FrameBuffer(
-            bitmap,
-            width,
-            height,
-            format if format is not None else self.format,
-        )
-        self.width = width
-        self.height = height
-        if x is not None:
-            self.x = x
-        if y is not None:
-            self.y = y
+    def update(self, *args, **kwargs):
+        raise NotImplementedError("Update bitmap not implemented yet")
 
     def render_x_y(self, x, y):
         self.x = x
@@ -241,16 +248,23 @@ class BitMapView(View):
         self.render()
 
     def render(self):
+        if self.rendered_once:
+            return
+        self.rendered_once = True
         super().render()
-        if self.format == RGB565:
-            # # write into self.display.display.buffer directly
-            # for py in range(self.height):
-            #     for px in range(self.width):
-            #         pixel = self.bitmap.pixel(px, py)
-            #         self.display.display.pixel(self.x + px, self.y + py, pixel)
-            self.display.display.blit(self.bitmap, self.x, self.y, -1)
+        if self.bitmap is None:
+            with open(self.filename, "rb") as f:
+                global global_buffer
+                f.readinto(global_buffer)
+                bitmap = FrameBuffer(
+                    global_buffer, self.width, self.height, self.format
+                )
         else:
-            self.display.display.blit(self.bitmap, self.x, self.y, -1, self.palette)
+            bitmap = self.bitmap
+        if self.format == RGB565:
+            self.display.display.blit(bitmap, self.x, self.y)
+        else:
+            self.display.display.blit(bitmap, self.x, self.y, -1, self.palette)
 
     def get_width_height(self):
         return self.width, self.height
@@ -363,7 +377,10 @@ class PBar(View):
         # default theme like a health bar with border. If shake_notice > 0, draw a red border
         if self.shake_notice > 0:
             self.shake_notice -= 1
-            border_color = self.shake_color
+            if self.shake_notice != 0:
+                border_color = self.shake_color
+            else:
+                border_color = self.fg_color
             # hacky way to make sure it continue rendering for next tick
             self._changed = True
         else:
