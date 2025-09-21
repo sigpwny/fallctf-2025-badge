@@ -72,6 +72,7 @@ class BasicTextView(View):
 
     def update(self, index, line):
         if 0 <= index < self.max_line:
+            self._changed = True
             if index >= len(self.lines):
                 self.lines.extend([""] * (index + 1 - len(self.lines)))
             self.lines[index] = line
