@@ -64,7 +64,6 @@ class Style:
     hidden: bool = False
     draw_outline: bool = False
     outline_color: int | None = None
-    _changed = True
 
     def __init__(
         self,
@@ -81,11 +80,6 @@ class Style:
         self.hidden = hidden
         self.draw_outline = draw_outline
         self.outline_color = outline_color
-
-    def __setattr__(self, name, value):
-        object.__setattr__(self, name, value)
-        if not self._changed:
-            self._changed = True
 
 
 class ComplexLayout(Layout):
@@ -120,6 +114,14 @@ class ComplexLayout(Layout):
             v.first_render(*args, **kwargs)
             v.render_x_y(0, 0)
         self.render()
+
+    def setHidden(self, i: int, val: bool):
+        """
+        This function is designed for invalid cache.
+        Plz use this instead of set hidden directly with render cache enabled.
+        """
+        self.views[i][1].hidden = val
+        self._changed = True
 
     def __setitem__(self, index: int, view_style):
         # type: (int, tuple[View, Style]) -> None
