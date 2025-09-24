@@ -37,11 +37,3 @@ Another example flow:
 The tasks are all bundled together in an `Environment`. There are two Environments currently (dev and test). The test environment does not have access to peripherals, wireless, and screens. Those classes will be simulated instead. This is to test the core functionality.
 
 Instead of using `print` debugging, please use the internal `log` method.
-
-## Local testing
-
-Run `BOARDLESS_MODE=1 ./main.py` for local testing. Display is outputted to a file. Currently, no peripherals are supported.
-
-## Badge testing
-
-Run `./mp_transfer.sh` to sync. Note that mpy-cross is needed for mpy bytecode compilation (otherwise board will run out of RAM).
