@@ -5,7 +5,7 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-set -ex
+set -e
 
 PORT=$1
 mpremote connect $PORT cp main.py :

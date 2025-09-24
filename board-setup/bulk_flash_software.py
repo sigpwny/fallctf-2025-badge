@@ -41,4 +41,6 @@ while True:
     #     connected.remove(path)
 
     print(f'still flashing: {flashing}')
-    time.sleep(1)
+    if len(flashing) == 0:
+        break
+    time.sleep(0.5)
