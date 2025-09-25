@@ -2,6 +2,10 @@
 
 I recommend using Github's outline feature to navigate this document.
 
+## Versioning
+
+The PCB folder contains several versions of schematics. v0.1 through v0.3 were the prototype versions. v1.0 was used as the final badge design.
+
 ## Microcontroller
 
 The badge has an ESP32-S2-SOLO-2-N4 module. This module features an ESP32-S2 SoC with 4MB of flash and internal antenna for 2.4Ghz Wi-Fi (no bluetooth).
@@ -96,6 +100,24 @@ The CS (chip select) and RESET pins are pulled high by default by the PCB. The D
 
 The LCD_LED pin is connected to a MOSFET which switches the backlight on and off. This pin can be driven with PWM to adjust the brightness of the backlight. We have found that a duty cycle between 20% and 40% offers a good visual experience.
 
+## Prototype pictures
+
+### v0.1
+
+TODO: add pictures
+
+### v0.2
+
+TODO: add pictures
+
+### v0.3
+
+TODO: add pictures
+
+### v1.0
+
+TODO: add pictures
+
 ## Design process and challenges
 
 ### Lessons learned
@@ -147,6 +169,10 @@ This is more of a software problem, but the underlying cause was hardware. We ke
 
 - Separate user controllable (blue?) LED. No need for a power LED.
 - Increase joystick voltage divider R39 and R40 to around 10K
+
+### Software is hard
+
+My biggest advice regarding software is to start earlier. I would recommend starting in early spring. The idea should be concretized by the end of spring so that work can begin over the summer. I think one of the biggest issues with the FallCTF 2025 badge was that the main software idea was not finalized until August, which left very little time for development and testing.
 
 ## Final hardware design
 
