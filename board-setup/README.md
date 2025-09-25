@@ -24,4 +24,4 @@ python -m esptool --after no_reset write_flash 0x1000 firmware.bin
 
 ## Flashing
 
-Run `./flash_firmware.sh` followed by `./flash_software.sh`
+Run `./flash_firmware.sh` followed by `./flash_software.sh`. To put the board in bootloader mode, press the "B" button on the front while powering it up. The "B" button is the lower pushbutton when holding the board with the display on the top side.
