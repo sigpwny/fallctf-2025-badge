@@ -252,6 +252,10 @@ Here are the main costs associated with developing the badge for FallCTF 2025. W
     - batteries: $453.88
         - supplier: [General Electronics Technology Co., Ltd.](https://geb.en.alibaba.com/index.html?spm=a2700.details.0.0.346c748eiMNOtQ&from=detail&productId=1600518355723)
     - displays: $1008.65 (including $281.56 duty)
+- lanyards: $253
+- badge cases: $260 (3d printed in our school's print farm)
+ 
+Total costs: $4600
 
 ## Gallery
 
