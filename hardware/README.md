@@ -295,4 +295,4 @@ Here are the main costs associated with developing the badge for FallCTF 2025. W
 
 ![PCB layout back](photos/layout2.png)
 
-![PCB schematic first page](photos/layout3.png)
+![PCB schematic first page](photos/schematic1.png)
