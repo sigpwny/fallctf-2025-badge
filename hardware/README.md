@@ -227,3 +227,72 @@ I connected both ends to the ESP32 through 220 Ohm resistors for greater flexibi
 ### Display
 
 Besides connecting a N-channel MOSFET to be able to vary the backlight, everything else was straight from the datasheet.
+
+## Costs
+
+Here are the main costs associated with developing the badge for FallCTF 2025. We ended up ordering 300 badges in the final order.
+
+- prototypes
+    - over three revisions of prototypes, we spent: $709.52
+    - 3.76 + 60.00 + 73.99 + 43.68 + 20.88 + 16.30 + 162.02 + 26.74 + 56.96 + 5.98 + 180.66 + 17.45 + 41.10
+- PCBA
+    - total: $1782.33
+    - includes $70.02 part preorder
+    - cost breakdown:
+        - MERCHANDISE TOTAL: $900.81
+        - SHIPPING CHARGE: $226.86
+        - Customs duties & taxes: $525.72
+        - DISCOUNT: -$15.00
+        - SALES TAX: $73.92
+        - ORDER TOTAL: $1712.31
+    - pcb cost: $173.10
+    - assembly cost: $727.71 ($366.59 for components)
+        - does not include ESP32, which we got for free
+- other final badge parts
+    - batteries: $453.88
+        - supplier: [General Electronics Technology Co., Ltd.](https://geb.en.alibaba.com/index.html?spm=a2700.details.0.0.346c748eiMNOtQ&from=detail&productId=1600518355723)
+    - displays: $1008.65 (including $281.56 duty)
+
+## Gallery
+
+### PCB prototypes
+
+![The front of three prototype boards](photos/pcbs_front.jpg)
+
+![The back of three prototype boards](photos/pcbs_back.jpg)
+
+### Case prototypes
+
+![Front view of more than a dozen 3D printed prototype cases](photos/prototype_all_front.jpg)
+
+![Top view of more than a dozen 3D printed prototype cases](photos/prototype_all_top.jpg)
+
+![Three early stage prototypes, simple geometric shapes](photos/prototype1.jpg)
+
+![Three more prototypes with more holes for cost reduction](photos/prototype2.jpg)
+
+![Three more prototypes with handles for easier grip](photos/prototype3.jpg)
+
+![Final series of seven prototypes with overall boxy look](photos/prototype4.jpg)
+
+### Final badge
+
+![Final badge](photos/final_whole.jpg)
+
+![Front of badge](photos/final_front.jpg)
+
+![Back of badge](photos/final_back.jpg)
+
+![Menu screen](photos/screen1.jpg)
+
+![Asteroids game screen](photos/screen2.jpg)
+
+![Upgrades screen](photos/screen3.jpg)
+
+![Space invaders game screen](photos/screen4.jpg)
+
+![PCB layout front](photos/layout1.png)
+
+![PCB layout back](photos/layout2.png)
+
+![PCB schematic first page](photos/layout3.png)
